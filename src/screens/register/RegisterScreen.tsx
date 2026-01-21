@@ -14,7 +14,6 @@ import {
     TouchableWithoutFeedback
 
 } from "react-native";
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleRegister } from "./styles";
 import { supabase } from "@/services/supabase";

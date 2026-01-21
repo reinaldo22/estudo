@@ -2,6 +2,7 @@ import { HomeScreen } from "@/screens/home/HomeScreen";
 import { RegisterScreen } from '@/screens/register/RegisterScreen';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen } from "@/screens/login/LoginScreen";
+import {ForgotPassScreen} from "@/screens/forgotPass/ForgotPassword";
 const Stack = createStackNavigator();
 
 export function Routes() {
@@ -9,6 +10,14 @@ export function Routes() {
         <Stack.Navigator>
 
             {/* Adicionamos a Home aqui para o navigation.navigate('Home') funcionar! 🏠 */}
+            
+            <Stack.Screen
+                name="Redefinir"
+                component={ForgotPassScreen}
+                options={{ 
+                    headerShown: false
+                }}
+            />
             <Stack.Screen
                 name="Login"
                 component={LoginScreen}
