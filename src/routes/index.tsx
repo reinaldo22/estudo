@@ -7,6 +7,15 @@ const Stack = createStackNavigator();
 export function Routes() {
     return (
         <Stack.Navigator>
+
+            {/* Adicionamos a Home aqui para o navigation.navigate('Home') funcionar! 🏠 */}
+            <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                options={{ 
+                    headerShown: false
+                }}
+            />
             <Stack.Screen
                 name="Register"
                 component={RegisterScreen}
@@ -14,12 +23,12 @@ export function Routes() {
                     headerShown: false
                 }}
             />
-
-            {/* Adicionamos a Home aqui para o navigation.navigate('Home') funcionar! 🏠 */}
             <Stack.Screen
-                name="Login"
-                component={LoginScreen}
-                options={{ title: 'Login' }} 
+                name="Home"
+                component={HomeScreen}
+                options={{ 
+                    headerShown: false
+                }}
             />
         </Stack.Navigator>
     )

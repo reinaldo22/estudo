@@ -5,7 +5,7 @@ export function HomeScreen() {
 
     return (
         <View style={styleHome.container}>
-            <Text>Alo Mundiono de cu</Text>
+            <Text>Autenticado com sucesso</Text>
         </View>
     )
 }

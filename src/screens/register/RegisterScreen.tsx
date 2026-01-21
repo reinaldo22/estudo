@@ -124,12 +124,17 @@ export function RegisterScreen() {
                     <View style={StyleRegister.container}>
                         {/* 1. Topo com Título e Seta */}
                         <View style={StyleRegister.header}>
-                            <Ionicons
-                                name="chevron-back"
-                                size={26}
-                                color={"#2D3748"}
-                                style={StyleRegister.backButton}
-                            />
+                            <TouchableOpacity 
+                                onPress={() => navigation.goBack()}
+                                style={StyleRegister.backButton} // Aplique o estilo aqui!
+                                >
+                                <Ionicons
+                                    name="chevron-back"
+                                    size={26}
+                                    color={"#2D3748"}
+                                    style={StyleRegister.backButton}
+                                />
+                            </TouchableOpacity>
                             <Text style={StyleRegister.headerTitle}>Cadastre-se</Text>
                         </View>
 

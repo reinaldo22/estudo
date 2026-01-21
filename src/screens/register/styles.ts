@@ -11,17 +11,24 @@ export const StyleRegister = StyleSheet.create({
         width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center', // Centraliza o conteúdo
-        marginTop: 50, // Espaço para a barra de status
-        height: 80,
+        justifyContent: 'center', // Mantém o título no centro
+        marginTop: 50,
+        height: 60, // Ajustado para um tamanho mais padrão
         position: 'relative',
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#2D3748',
-        left: 10,
-        position: 'static',
+        fontFamily: 'sans-serif',
+       
+    },
+    backButton: {
+        position: 'absolute', // Tira o botão do fluxo normal 🚀
+        left: 0,            // Fixa ele na lateral esquerda
+        zIndex: 10,          // Garante que ele fique por cima para receber o clique
+        padding: 10,         // Aumenta a área de toque (UX!)
+        bottom: 2
     },
     logoContainer: {
         alignItems: 'center',
@@ -36,11 +43,7 @@ export const StyleRegister = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    backButton: {
-        position: 'absolute',    // A seta "flutua" e não empurra o texto
-        left: 20,                // Fixa a seta na esquerda
-        top: 30,                 // Alinha verticalmente com o text
-    },
+
     mainTitle: {
         fontSize: 27,         // Um tamanho bem grande para destaque 
         fontWeight: '400',   // O negrito que você escolheu
