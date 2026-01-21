@@ -1,4 +1,4 @@
-import { View, Text, KeyboardAvoidingView, ScrollView, Platform, Keyboard, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Alert, KeyboardAvoidingView, ScrollView, Platform, Keyboard, TouchableWithoutFeedback } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { StyleLoginScreen } from "./styles";
 import React, { useState } from 'react';
@@ -7,6 +7,7 @@ import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { useNavigation } from '@react-navigation/native'; // Hook para navegação 🚀
 import { Checkbox } from "@/components/checkboxComponent/Checkbox";
+import { supabase } from "@/services/supabase";
 
 export function LoginScreen() {
     const navigation = useNavigation<any>();
@@ -23,7 +24,46 @@ export function LoginScreen() {
     const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
     async function handleSignIn() {
+        // 1. Criamos um objeto para validar os campos atuais
+        let currentErrors = {
+            email: !email ? "O e-mail é obrigatório" : "",
+            password: !password ? "A senha é obrigatória" : ""
+        };
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && !emailRegex.test(email)) {
+            currentErrors.email = "Por favor, insira um e-mail válido";
+        }
+
+        setErrors(currentErrors);
+
+        // 2. Verificamos se existe algum erro antes de prosseguir
+        const hasErrors = Object.values(currentErrors).some(error => error !== "");
+        if (hasErrors) return;
+
+        setLoading(true);
+
+
+        try {
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            })
+
+            if (authError) {
+                if (authError.message === 'Invalid login credentials') {
+                    Alert.alert("Erro no Login", "E-mail ou senha incorretos. 🔑");
+                } else {
+                    Alert.alert("Erro", authError.message);
+                }
+            } else {
+                navigation.replace('Home'); // 'replace' impede que o usuário volte para o login ao clicar em voltar
+            }
+        } catch (error) {
+            Alert.alert("Erro", "Ocorreu um erro inesperado.");
+        } finally {
+            setLoading(false);
+        }
 
     }
 
@@ -91,24 +131,21 @@ export function LoginScreen() {
                             onRightIconPress={() => setShowPassword(!showPassword)}
                         />
 
-                        <Checkbox
-                            label="Mantenha-me logado"
-                            value={keepLoggedIn}
-                            onChange={setKeepLoggedIn}
-                        />
-
                         <PrimaryButton
                             title='Login'
                             onPress={handleSignIn} isLoading={loading} />
 
-                        {/* Link para Cadastro */}
                         <View style={StyleLoginScreen.footerContainer}>
-                            <Text style={StyleLoginScreen.footerText}>É novo no mercado? </Text>
+                            {/* Lado Esquerdo: Cadastro */}
                             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                                 <Text style={StyleLoginScreen.signUpText}>Inscrever-se</Text>
                             </TouchableOpacity>
-                        </View>
 
+                            {/* Lado Direito: Redefinir */}
+                            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                                <Text style={StyleLoginScreen.forgotPasswordText}>Redefinir senha</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </TouchableWithoutFeedback>
             </ScrollView>

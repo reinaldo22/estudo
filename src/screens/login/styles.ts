@@ -113,17 +113,25 @@ export const StyleLoginScreen = StyleSheet.create({
         fontWeight: '500',
     },
     footerContainer: {
-        flexDirection: 'row', 
-        justifyContent: 'center',    
-        alignItems: 'center',    
-        marginTop: 20
+        flexDirection: 'row',       // Alinha em linha ↔️
+        justifyContent: 'space-between', // Espalha para os cantos ↔️
+        alignItems: 'center',       // Alinha verticalmente ao centro ↕️
+        marginTop: 20,  
+        paddingHorizontal: 5,       // Um pequeno respiro nas laterais
     },
-    footerText:{
+    footerText: {
         color: '#718096',
         fontSize: 15,
         fontWeight: 'bold',
     },
-    signUpText:{
+
+    signUpText: {
+        color: '#2D6A4F', // O verde do seu tema
+        fontSize: 15,
+        fontWeight: '900',
+        marginLeft: 5, // Espaço entre o texto e o link
+    },
+    forgotPasswordText: {
         color: '#2D6A4F', // O verde do seu tema
         fontSize: 15,
         fontWeight: '900',

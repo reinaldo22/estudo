@@ -23,6 +23,13 @@ export function Routes() {
                     headerShown: false
                 }}
             />
+            <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ 
+                    headerShown: false
+                }}
+            />
         </Stack.Navigator>
     )
 }
