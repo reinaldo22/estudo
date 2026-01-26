@@ -140,7 +140,7 @@ export function LoginScreen() {
                             </TouchableOpacity>
 
                             {/* Lado Direito: Redefinir */}
-                            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                            <TouchableOpacity onPress={() => navigation.navigate('Redefinir')}>
                                 <Text style={StyleLoginScreen.forgotPasswordText}>Redefinir senha</Text>
                             </TouchableOpacity>
                         </View>

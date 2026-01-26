@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { Input } from '@/components/inputComponent/InputConponent';
+import { supabase } from "@/services/supabase"; // Importe seu supabase
 
 export function ForgotPassScreen() {
     const navigation = useNavigation<any>();
@@ -18,7 +19,7 @@ export function ForgotPassScreen() {
     async function handleResetPassword() {
 
         setErrors({ email: '' });
-        
+
         // 1. Resetar erros e iniciar loading
         setErrors({ email: '' });
         // Regex padrão para validação de e-mail
@@ -37,7 +38,23 @@ export function ForgotPassScreen() {
         // Se passar por aqui, o e-mail é válido! ✅
         setLoading(true);
         try {
-            // Aqui entra a chamada do Supabase que discutiremos a seguir
+
+            const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                // MUITA ATENÇÃO AQUI:
+                // Se estiver usando Expo Go em desenvolvimento, use o endereço do seu Metro Bundler
+                // Exemplo: 'exp://192.168.0.10:8081' ou o esquema do seu app em produção
+                redirectTo: 'exp://32fdg80-anonymous-8081.exp.direct/--/Senha',
+            });
+            if (error) {
+                // Se o e-mail não existir ou houver erro de limite de envio (rate limit)
+                Alert.alert("Erro", error.message);
+            } else {
+                Alert.alert(
+                    "Sucesso!",
+                    "O link de redefinição foi enviado para o seu e-mail.",
+                    [{ text: "OK", onPress: () => navigation.navigate('Login') }]
+                );
+            }
         } catch (error) {
             Alert.alert("Erro", "Ocorreu um erro inesperado.");
         } finally {
