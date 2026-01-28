@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Reciclã",
-    "slug": "Reciclã",
+    "slug": "recicla",
+    "scheme": "recicla",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

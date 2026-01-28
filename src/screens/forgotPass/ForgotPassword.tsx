@@ -20,40 +20,28 @@ export function ForgotPassScreen() {
 
         setErrors({ email: '' });
 
-        // 1. Resetar erros e iniciar loading
         setErrors({ email: '' });
-        // Regex padrão para validação de e-mail
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        // 2. Validação de campo vazio
         if (!email.trim()) {
             setErrors({ email: 'O e-mail é obrigatório.' });
             return;
         }
-        // 3. Validação de formato
         if (!emailRegex.test(email)) {
             setErrors({ email: 'Por favor, insira um e-mail válido.' });
             return;
         }
-        // Se passar por aqui, o e-mail é válido! ✅
         setLoading(true);
         try {
 
-            const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                // MUITA ATENÇÃO AQUI:
-                // Se estiver usando Expo Go em desenvolvimento, use o endereço do seu Metro Bundler
-                // Exemplo: 'exp://192.168.0.10:8081' ou o esquema do seu app em produção
-                redirectTo: 'exp://32fdg80-anonymous-8081.exp.direct/--/Senha',
-            });
+            // Verifica se usuário existe
+            const { data, error } = await supabase.from('Users').select('email').eq('email', email).single();
+
             if (error) {
-                // Se o e-mail não existir ou houver erro de limite de envio (rate limit)
-                Alert.alert("Erro", error.message);
+                setErrors({ email: 'E-mail não encontrado' });
+                return;
             } else {
-                Alert.alert(
-                    "Sucesso!",
-                    "O link de redefinição foi enviado para o seu e-mail.",
-                    [{ text: "OK", onPress: () => navigation.navigate('Login') }]
-                );
+                navigation.navigate('Senha', { email });
             }
         } catch (error) {
             Alert.alert("Erro", "Ocorreu um erro inesperado.");
