@@ -1,24 +1,22 @@
-import { ResetPasswordStyle } from './style';
+import { SendEmailPassStyle } from './style';
 import { View, Text, Alert, KeyboardAvoidingView, ScrollView, Platform, Keyboard, TouchableWithoutFeedback } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
-import { useNavigation } from '@react-navigation/native'; // Hook para navegação 🚀
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { Input } from '@/components/inputComponent/InputConponent';
-import { supabase } from "@/services/supabase"; // Importe seu supabase
+import { supabase } from "@/services/supabase";
 
-export function ForgotPassScreen() {
+export function SendEmailPass() {
     const navigation = useNavigation<any>();
 
-    // Todos os states juntos no topo do componente 🔝
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({ email: '' });
 
     async function handleResetPassword() {
-
-        setErrors({ email: '' });
+        
 
         setErrors({ email: '' });
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,20 +29,43 @@ export function ForgotPassScreen() {
             setErrors({ email: 'Por favor, insira um e-mail válido.' });
             return;
         }
-        setLoading(true);
-        try {
 
-            // Verifica se usuário existe
-            const { data, error } = await supabase.from('Users').select('email').eq('email', email).single();
+        setLoading(true);
+
+        try {
+            
+            const { data, error } = await supabase
+                .from('profile')
+                .select('email')
+                .eq('email', email.trim().toLowerCase())
+                .single();
 
             if (error) {
-                setErrors({ email: 'E-mail não encontrado' });
+                if (error.code === 'PGRST116') {
+                    setErrors({ email: 'E-mail não encontrado em nossa base.' });
+                } else {
+                    console.error('Erro técnico na consulta:', error.message);
+                    setErrors({ email: 'Erro ao validar e-mail. Tente novamente.' });
+                }
                 return;
-            } else {
-                navigation.navigate('Senha', { email });
             }
+
+
+            const { data: funcData, error: funcError } = await supabase.functions.invoke('send-reset-code', {
+                body: { to: email.trim().toLowerCase() },
+            });
+
+            if (funcError) {
+                console.error("Erro ao invocar function:", funcError);
+                Alert.alert("Erro", "Falha ao enviar código de verificação. Tente novamente.");
+                return;
+            }
+
+            navigation.navigate('ConfirmCode', { email: email.trim().toLowerCase() });
+
         } catch (error) {
-            Alert.alert("Erro", "Ocorreu um erro inesperado.");
+            console.error("Erro inesperado:", error);
+            Alert.alert("Erro", "Ocorreu um erro inesperado ao processar sua solicitação.");
         } finally {
             setLoading(false);
         }
@@ -60,31 +81,31 @@ export function ForgotPassScreen() {
 
                 showsVerticalScrollIndicator={false}>
 
-                <View style={ResetPasswordStyle.container}>
+                <View style={SendEmailPassStyle.container}>
                     {/* 1. Botão de Voltar */}
-                    <View style={ResetPasswordStyle.header}>
+                    <View style={SendEmailPassStyle.header}>
                         <TouchableOpacity onPress={() => navigation.goBack()}>
                             <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
                         </TouchableOpacity>
                     </View>
 
                     {/* 2. Área do Ícone (Logo) - Alinhado à esquerda */}
-                    <View style={ResetPasswordStyle.logoContainer}>
-                        <View style={ResetPasswordStyle.iconBox}>
+                    <View style={SendEmailPassStyle.logoContainer}>
+                        <View style={SendEmailPassStyle.iconBox}>
                             <Ionicons name="leaf" size={40} color="#2D6A4F" />
                         </View>
                     </View>
 
                     {/* Aqui entrarão os textos e o input que vimos na imagem... */}
-                    <View style={ResetPasswordStyle.content}>
-                        <Text style={ResetPasswordStyle.title}>Redefinir Senha</Text>
-                        <Text style={ResetPasswordStyle.subtitle}>
+                    <View style={SendEmailPassStyle.content}>
+                        <Text style={SendEmailPassStyle.title}>Redefinir Senha</Text>
+                        <Text style={SendEmailPassStyle.subtitle}>
                             Não se preocupe, isso acontece. Insira seu endereço de e-mail cadastrado abaixo e enviaremos um link para redefinir sua senha.
                         </Text>
                     </View>
 
                     {/* 4. Formulário */}
-                    <View style={ResetPasswordStyle.form}>
+                    <View style={SendEmailPassStyle.form}>
                         <Input
                             label="Email"
                             icon="mail-outline"

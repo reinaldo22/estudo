@@ -39,7 +39,7 @@ export function RegisterScreen() {
 
     async function handleSignUp() {
 
-        // 1. Criamos um objeto para validar os campos atuais
+        
         let currentErrors = {
             fullName: !fullName ? "O nome é obrigatório" : "",
             email: !email ? "O e-mail é obrigatório" : "",
@@ -47,14 +47,13 @@ export function RegisterScreen() {
             password: !password ? "A senha é obrigatória" : ""
         };
 
-        // 2. Validação de Formato de E-mail (Regex) 📧
+       
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (email && !emailRegex.test(email)) {
             currentErrors.email = "Por favor, insira um e-mail válido";
         }
         setErrors(currentErrors);
 
-        // 2. Verificamos se existe algum erro antes de prosseguir
         const hasErrors = Object.values(currentErrors).some(error => error !== "");
         if (hasErrors) return;
 
@@ -99,7 +98,7 @@ export function RegisterScreen() {
             setLoading(false);
         }
     }
-    // 2. Depois declaramos a função de atualização 🛠️
+
     function updateField(field: string, value: string) {
         if (field === 'fullName') setFullName(value);
         if (field === 'email') setEmail(value);

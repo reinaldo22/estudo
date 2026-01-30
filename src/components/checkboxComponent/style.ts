@@ -11,7 +11,7 @@ export const StyleCheckBox = StyleSheet.create({
         height: 22,
         borderRadius: 11,
         borderWidth: 2,
-        borderColor: '#2D6A4F', // O verde do seu tema
+        borderColor: '#2D6A4F',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 10,

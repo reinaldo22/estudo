@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export const NewPassStyle = StyleSheet.create({
     container: {
 
-        backgroundColor: '#F8F9F5', // Um fundo claro como na imagem
+        backgroundColor: '#F8F9F5', 
         paddingHorizontal: 20,
         paddingBottom: 100,
     },
@@ -12,9 +12,9 @@ export const NewPassStyle = StyleSheet.create({
         width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center', // Mantém o título no centro
+        justifyContent: 'center', 
         marginTop: 50,
-        height: 60, // Ajustado para um tamanho mais padrão
+        height: 60, 
         position: 'relative',
     },
     headerTitle: {
@@ -25,10 +25,10 @@ export const NewPassStyle = StyleSheet.create({
        
     },
     backButton: {
-        position: 'absolute', // Tira o botão do fluxo normal 🚀
-        left: 0,            // Fixa ele na lateral esquerda
-        zIndex: 10,          // Garante que ele fique por cima para receber o clique
-        padding: 10,         // Aumenta a área de toque (UX!)
+        position: 'absolute', 
+        left: 0,            
+        zIndex: 10,         
+        padding: 10,         
         bottom: 2
     },
     logoContainer: {
@@ -39,28 +39,28 @@ export const NewPassStyle = StyleSheet.create({
     iconBox: {
         width: 80,
         height: 80,
-        backgroundColor: '#E6F4EA', // Verde bem clarinho 🍃
-        borderRadius: 25, // Cantos arredondados
+        backgroundColor: '#E6F4EA', 
+        borderRadius: 25, 
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     mainTitle: {
-        fontSize: 27,         // Um tamanho bem grande para destaque 
-        fontWeight: '400',   // O negrito que você escolheu
-        color: '#000000',     // Preto puro
+        fontSize: 27,         
+        fontWeight: '400',   
+        color: '#000000',   
         textAlign: 'center',
-        marginBottom: 10,     // Espaço entre o título e o subtítulo
+        marginBottom: 10,    
     },
     content: {
-        alignItems: 'center', // Garante que tudo no corpo fique centralizado
-        paddingHorizontal: 30, // Dá um respiro nas laterais para o texto não tocar as bordas
+        alignItems: 'center',
+        paddingHorizontal: 30, 
     },
     subtitle: {
         fontSize: 16,
-        color: '#718096',     // Aquele cinza suave que conversamos ☁️
+        color: '#718096',     
         textAlign: 'center',
-        lineHeight: 24,       // Aumenta o espaço entre as linhas para facilitar a leitura
+        lineHeight: 24,       
     },
     inputWrapper: {
         flexDirection: 'column',
@@ -72,7 +72,7 @@ export const NewPassStyle = StyleSheet.create({
         fontSize: 13,
         color: '#718096',
         fontWeight: 'bold',
-        marginBottom: 8,  // ↕️ Isso cria um pequeno espaço entre a label e a caixa branca dela
+        marginBottom: 8,   
         marginLeft: 5,
     },
     inputContainer: {
@@ -91,29 +91,29 @@ export const NewPassStyle = StyleSheet.create({
     },
 
     button: {
-        backgroundColor: '#2D6A4F', // O verde escuro da folha 🍃
-        flexDirection: 'row',       // Ícone e texto lado a lado
+        backgroundColor: '#2D6A4F',     
+        flexDirection: 'row',           
         height: 60,
-        borderRadius: 30,           // Metade da altura para ser totalmente arredondado
-        justifyContent: 'center',   // Centraliza horizontalmente
-        alignItems: 'center',       // Centraliza verticalmente
+        borderRadius: 30,               
+        justifyContent: 'center',       
+        alignItems: 'center',           
         marginTop: 30,
-        shadowColor: '#000',        // Sombra para dar profundidade
+        shadowColor: '#000',            
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
-        elevation: 5,               // Sombra no Android
+        elevation: 5,                   
     },
     buttonText: {
         color: '#FFF',
         fontSize: 18,
         fontWeight: 'bold',
-        marginRight: 10,            // Espaço antes da seta
+        marginRight: 10,                
     },
     errorText: {
-        color: '#E53E3E', // Um tom de vermelho vibrante 🔴
-        fontSize: 12,     // Menor que a label (13) para criar hierarquia
-        marginTop: 4,     // Pequeno espaço após a caixa branca
-        marginLeft: 18,   // Alinhado com o início do texto dentro da caixa
+        color: '#E53E3E',   
+        fontSize: 12,       
+        marginTop: 4,       
+        marginLeft: 18,     
         fontWeight: '500',
     },
 });

@@ -2,8 +2,9 @@ import { HomeScreen } from "@/screens/home/HomeScreen";
 import { RegisterScreen } from '@/screens/register/RegisterScreen';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen } from "@/screens/login/LoginScreen";
-import { ForgotPassScreen } from "@/screens/forgotPass/ForgotPassword";
-import { NewPasswordScreen } from "@/screens/forgotPass/newPass/NewPassScreen";
+import { SendEmailPass } from "@/screens/forgotPass/SendEmailPasswordScreen/SendEmailPass";
+import { ConfirmCodePass } from "@/screens/forgotPass/ConfirmCodeScreen/ConfirmCodePass";
+import { NewPasswordScreen } from "@/screens/forgotPass/newPass/NewPasswordScreen";
 const Stack = createStackNavigator();
 
 export function Routes() {
@@ -27,7 +28,7 @@ export function Routes() {
 
             <Stack.Screen
                 name="Redefinir"
-                component={ForgotPassScreen}
+                component={SendEmailPass}
                 options={{
                     headerShown: false
                 }}
@@ -55,6 +56,16 @@ export function Routes() {
                     headerShown: false
                 }}
             />
+
+
+            <Stack.Screen
+                name="ConfirmCode"
+                component={ConfirmCodePass}
+                options={{
+                    headerShown: false
+                }}
+            />
+
         </Stack.Navigator>
     )
 }

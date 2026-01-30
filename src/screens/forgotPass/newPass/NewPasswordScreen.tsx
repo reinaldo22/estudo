@@ -15,7 +15,7 @@ export function NewPasswordScreen() {
     const [showPassword, setShowPassword] = useState(false);
 
     async function handleUpdatePassword() {
-        // 1. Validações básicas de UI
+
         if (!password || !confirmPassword) {
             Alert.alert("Erro", "Por favor, preencha todos os campos.");
             return;
@@ -40,7 +40,7 @@ export function NewPasswordScreen() {
                 );
                 return;
             }
-            // 2. Agora que temos certeza que há uma sessão, atualizamos a senha
+
             const { error } = await supabase.auth.updateUser({
                 password: password
             });
@@ -48,8 +48,8 @@ export function NewPasswordScreen() {
             if (error) {
                 Alert.alert("Erro ao atualizar", error.message);
             } else {
-                // 3. Sucesso! Limpar sessão e mandar para o login
-                await supabase.auth.signOut(); // Opcional: desloga para forçar login com a nova senha
+
+                await supabase.auth.signOut(); 
                 Alert.alert("Sucesso", "Sua senha foi atualizada com sucesso!", [
                     { text: "Ir para Login", onPress: () => navigation.navigate('Login') }
                 ]);
