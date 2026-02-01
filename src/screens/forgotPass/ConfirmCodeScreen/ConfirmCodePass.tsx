@@ -38,10 +38,11 @@ export function ConfirmCodePass() {
             // Buscando os dados na tabela 'profile' conforme sua estrutura
             const { data, error } = await supabase
                 .from('profile')
-                .select('reset_code, reset_expires_at')
+                .select('reset_code, reset_code_expires_at')
                 .eq('email', email)
                 .single();
 
+            console.log("---->>>>>-", data)
             if (error || !data) {
                 Alert.alert("Erro", "Não encontramos um código para este e-mail.");
                 return;
@@ -55,13 +56,17 @@ export function ConfirmCodePass() {
 
             // Validação de expiração (Time-to-Live)
             const now = new Date();
-            if (data.reset_expires_at && new Date(data.reset_expires_at) < now) {
+            if (data.reset_code_expires_at && new Date(data.reset_code_expires_at) < now) {
                 setErrorCode('Este código expirou. Gere um novo.');
                 return;
             }
 
             // Sucesso: Segue para a tela de criar a nova senha
-            navigation.navigate('NewPasswordScreen', { email: email });
+            navigation.navigate('Senha', {
+                email,
+                code: code.trim(),
+            });
+
 
         } catch (error) {
             console.error(error);

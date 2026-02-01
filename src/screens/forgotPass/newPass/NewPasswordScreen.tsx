@@ -6,8 +6,13 @@ import { Input } from '@/components/inputComponent/InputConponent';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { supabase } from "@/services/supabase";
 import { useNavigation } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 
 export function NewPasswordScreen() {
+
+    const route = useRoute<any>();
+    const { email, code } = route.params;
+
     const navigation = useNavigation<any>();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,9 +20,8 @@ export function NewPasswordScreen() {
     const [showPassword, setShowPassword] = useState(false);
 
     async function handleUpdatePassword() {
-
         if (!password || !confirmPassword) {
-            Alert.alert("Erro", "Por favor, preencha todos os campos.");
+            Alert.alert("Erro", "Preencha todos os campos.");
             return;
         }
 
@@ -29,37 +33,45 @@ export function NewPasswordScreen() {
         setLoading(true);
 
         try {
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            const { data, error } = await supabase.functions.invoke(
+                'reset-password',
+                {
+                    body: {
+                        email,
+                        code,
+                        newPassword: password,
+                    },
+                }
+            );
 
-
-            if (sessionError || !session) {
-                console.log("Erro de sessão:", sessionError);
-                Alert.alert(
-                    "Sessão Inválida",
-                    "Não conseguimos validar seu acesso. Por favor, solicite um novo e-mail de recuperação."
-                );
+            if (error) {
+                Alert.alert("Erro", error.message || "Falha ao redefinir senha.");
                 return;
             }
 
-            const { error } = await supabase.auth.updateUser({
-                password: password
-            });
+            Alert.alert(
+                "Sucesso",
+                "Senha redefinida com sucesso.",
+                [
+                    {
+                        text: "Ir para Login",
+                        onPress: () =>
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Login' }],
+                            }),
+                    },
+                ]
+            );
 
-            if (error) {
-                Alert.alert("Erro ao atualizar", error.message);
-            } else {
 
-                await supabase.auth.signOut(); 
-                Alert.alert("Sucesso", "Sua senha foi atualizada com sucesso!", [
-                    { text: "Ir para Login", onPress: () => navigation.navigate('Login') }
-                ]);
-            }
         } catch (err) {
-            Alert.alert("Erro", "Ocorreu um erro inesperado.");
+            Alert.alert("Erro", "Erro inesperado.");
         } finally {
             setLoading(false);
         }
     }
+
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
