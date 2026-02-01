@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
-// No Expo, usamos process.env para acessar o .env
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const extra = Constants.expoConfig?.extra;
 
-// Criamos a instância do cliente
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseUrl = extra?.supabaseUrl;
+const supabaseAnonKey = extra?.supabaseAnonKey;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase env vars not loaded');
+}
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey
+);

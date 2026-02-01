@@ -3,7 +3,6 @@ import { View, Text, TextInput, TextInputProps, TouchableOpacity, StyleSheet } f
 import { Ionicons } from '@expo/vector-icons';
 import { StyleRegister } from '@/screens/register/styles';
 
-// 1. Definimos a interface com as propriedades que o componente aceita
 interface InputProps extends TextInputProps {
     label: string;
     icon: keyof typeof Ionicons.glyphMap;

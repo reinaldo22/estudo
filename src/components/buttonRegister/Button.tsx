@@ -7,11 +7,10 @@ import {
   StyleSheet 
 } from 'react-native';
 
-// Definimos o que o nosso botão pode receber
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  isLoading?: boolean; // O '?' indica que é opcional
+  isLoading?: boolean; 
 }
 
 export function PrimaryButton({title, onPress, isLoading}: ButtonProps){

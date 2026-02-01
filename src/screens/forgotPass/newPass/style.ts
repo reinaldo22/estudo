@@ -1,9 +1,10 @@
 import { StyleSheet } from 'react-native';
 
-export const StyleRegister = StyleSheet.create({
+
+export const NewPassStyle = StyleSheet.create({
     container: {
 
-        backgroundColor: '#F8F9F5',
+        backgroundColor: '#F8F9F5', 
         paddingHorizontal: 20,
         paddingBottom: 100,
     },
@@ -11,9 +12,9 @@ export const StyleRegister = StyleSheet.create({
         width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'center', 
         marginTop: 50,
-        height: 60,
+        height: 60, 
         position: 'relative',
     },
     headerTitle: {
@@ -21,13 +22,13 @@ export const StyleRegister = StyleSheet.create({
         fontWeight: '700',
         color: '#2D3748',
         fontFamily: 'sans-serif',
-
+       
     },
     backButton: {
-        position: 'absolute',
-        left: 0,
-        zIndex: 10,
-        padding: 10,
+        position: 'absolute', 
+        left: 0,            
+        zIndex: 10,         
+        padding: 10,         
         bottom: 2
     },
     logoContainer: {
@@ -38,28 +39,28 @@ export const StyleRegister = StyleSheet.create({
     iconBox: {
         width: 80,
         height: 80,
-        backgroundColor: '#E6F4EA',
-        borderRadius: 25,
+        backgroundColor: '#E6F4EA', 
+        borderRadius: 25, 
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     mainTitle: {
-        fontSize: 27,
-        fontWeight: '400',
-        color: '#000000',
+        fontSize: 27,         
+        fontWeight: '400',   
+        color: '#000000',   
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: 10,    
     },
     content: {
         alignItems: 'center',
-        paddingHorizontal: 30,
+        paddingHorizontal: 30, 
     },
     subtitle: {
         fontSize: 16,
-        color: '#718096',
+        color: '#718096',     
         textAlign: 'center',
-        lineHeight: 24,
+        lineHeight: 24,       
     },
     inputWrapper: {
         flexDirection: 'column',
@@ -71,7 +72,7 @@ export const StyleRegister = StyleSheet.create({
         fontSize: 13,
         color: '#718096',
         fontWeight: 'bold',
-        marginBottom: 8,
+        marginBottom: 8,   
         marginLeft: 5,
     },
     inputContainer: {
@@ -90,29 +91,29 @@ export const StyleRegister = StyleSheet.create({
     },
 
     button: {
-        backgroundColor: '#2D6A4F',
-        flexDirection: 'row',
+        backgroundColor: '#2D6A4F',     
+        flexDirection: 'row',           
         height: 60,
-        borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
+        borderRadius: 30,               
+        justifyContent: 'center',       
+        alignItems: 'center',           
         marginTop: 30,
-        shadowColor: '#000',
+        shadowColor: '#000',            
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
-        elevation: 5,
+        elevation: 5,                   
     },
     buttonText: {
         color: '#FFF',
         fontSize: 18,
         fontWeight: 'bold',
-        marginRight: 10,
+        marginRight: 10,                
     },
     errorText: {
-        color: '#E53E3E',
-        fontSize: 12,
-        marginTop: 4,
-        marginLeft: 18,
+        color: '#E53E3E',   
+        fontSize: 12,       
+        marginTop: 4,       
+        marginLeft: 18,     
         fontWeight: '500',
     },
 });

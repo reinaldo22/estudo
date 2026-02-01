@@ -6,7 +6,6 @@ import { Input } from '@/components/inputComponent/InputConponent';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { useNavigation } from '@react-navigation/native'; // Hook para navegação 🚀
-import { Checkbox } from "@/components/checkboxComponent/Checkbox";
 import { supabase } from "@/services/supabase";
 
 export function LoginScreen() {
@@ -21,7 +20,6 @@ export function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [keepLoggedIn, setKeepLoggedIn] = useState(false);
 
     async function handleSignIn() {
         // 1. Criamos um objeto para validar os campos atuais
@@ -142,7 +140,7 @@ export function LoginScreen() {
                             </TouchableOpacity>
 
                             {/* Lado Direito: Redefinir */}
-                            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                            <TouchableOpacity onPress={() => navigation.navigate('Redefinir')}>
                                 <Text style={StyleLoginScreen.forgotPasswordText}>Redefinir senha</Text>
                             </TouchableOpacity>
                         </View>
