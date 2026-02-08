@@ -7,7 +7,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: false,
+    newArchEnabled: true,
 
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,

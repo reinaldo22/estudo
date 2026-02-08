@@ -55,7 +55,7 @@ export function LoginScreen() {
                     Alert.alert("Erro", authError.message);
                 }
             } else {
-                navigation.replace('Home'); // 'replace' impede que o usuário volte para o login ao clicar em voltar
+                navigation.replace('Drawer'); // 'replace' impede que o usuário volte para o login ao clicar em voltar
             }
         } catch (error) {
             Alert.alert("Erro", "Ocorreu um erro inesperado.");
