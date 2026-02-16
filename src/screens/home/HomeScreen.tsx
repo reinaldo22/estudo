@@ -5,14 +5,22 @@ import { AdCard } from "@/components/cardAdd/AdCard";
 import React, { useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
+import { useRoute } from '@react-navigation/native';
+import { EmptyState } from "@/components/EmptyStateComponent/EmptyState";
+import { EmptySyle } from "@/components/EmptyStateComponent/style";
 
+
+// 1. Atualize a interface aqui no topo da HomeScreen
 interface AnuncioProps {
     id: string;
     titulo: string;
     preco: number;
     tipo: 'venda' | 'doação';
     imagens: string[];
-    distancia?: number;
+    estado: string;   // <--- ADICIONE ESTA LINHA
+    cidade: string;   // <--- ADICIONE ESTA LINHA
+    distancia?: number; // (Pode manter como opcional se for usar no futuro)
 }
 
 interface CategoriaProps {
@@ -21,39 +29,75 @@ interface CategoriaProps {
     slug: string;
 }
 
+// Defina uma interface simples para a região
+interface RegiaoProps {
+    estado: string;
+    cidade: string;
+}
+
 export function HomeScreen({ navigation }: any) {
+    const route = useRoute();
+
     const [recentes, setRecentes] = useState<AnuncioProps[]>([]);
     const [recomendados, setRecomendados] = useState<AnuncioProps[]>([]);
     const [listaCategorias, setListaCategorias] = useState<CategoriaProps[]>([]);
     const [search, setSearch] = useState("");
     const [categoriaSelecionada, setCategoriaSelecionada] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true); // NOVO ESTADO
+    const [listaRegioes, setListaRegioes] = useState<RegiaoProps[]>([]);
+
+    // Captura os filtros que vêm da FilterScreen
+    const filtrosExtras = (route.params as any)?.filtros;
 
     // Função para buscar dados do Supabase (com filtro de Categoria e Busca)
-    async function loadData(categoriaId?: string) {
-        // 1. Busca anúncios recentes
-        const { data: dataRecentes } = await supabase
-            .from('anuncios')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(5);
+    async function loadData(categoriaId?: string, filtrosExtra?: any) {
+        setLoading(true); // Começa o carregamento
 
-        // 2. Prepara a query de recomendados
-        let query = supabase.from('anuncios').select('*').eq('status', 'ativo');
+        // Debug: Veja no terminal o que está chegando do filtro
+        try {
+            const { data: dataRecentes } = await supabase
+                .from('anuncios')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(5);
 
-        // Filtro por ID de categoria
-        if (categoriaId && categoriaId !== 'tudo') {
-            query = query.eq('id_categoria', categoriaId);
+            let query = supabase.from('anuncios').select('*').eq('status', 'ativo');
+
+            // 1. Filtro por Categoria (da barra horizontal)
+            const catId = categoriaId || categoriaSelecionada;
+            if (catId && catId !== 'tudo') {
+                query = query.eq('id_categoria', catId);
+            }
+            // 2. Filtro por Texto da Busca (TextInput)
+            if (search.trim() !== "") {
+                query = query.ilike('titulo', `%${search}%`);
+            }
+
+            // 3. Filtros que vieram da Tela de Filtros (Estado, Cidade, Tipo, Preço)
+            if (filtrosExtra) {
+                if (filtrosExtra.tipo) query = query.eq('tipo', filtrosExtra.tipo);
+                if (filtrosExtra.estado) query = query.ilike('estado', `%${filtrosExtra.estado}%`);
+                if (filtrosExtra.cidade) query = query.ilike('cidade', `%${filtrosExtra.cidade}%`);
+
+                if (filtrosExtra.tipo !== 'doação') {
+                    if (filtrosExtra.precoMin && filtrosExtra.precoMin > 0) {
+                        query = query.gte('preco', filtrosExtra.precoMin);
+                    }
+                    if (filtrosExtra.precoMax && filtrosExtra.precoMax > 0) {
+                        query = query.lte('preco', filtrosExtra.precoMax);
+                    }
+                }
+            }
+
+            const { data: dataRecomendados } = await query;
+
+            if (dataRecentes) setRecentes(dataRecentes as AnuncioProps[]);
+            if (dataRecomendados) setRecomendados(dataRecomendados as AnuncioProps[]);
+        } catch (error) {
+            console.error("Erro ao carregar dados:", error);
+        } finally {
+            setLoading(false); // Finaliza o carregamento
         }
-
-        // Filtro por Texto da Busca
-        if (search.trim() !== "") {
-            query = query.ilike('titulo', `%${search}%`);
-        }
-
-        const { data: dataRecomendados } = await query;
-
-        if (dataRecentes) setRecentes(dataRecentes as AnuncioProps[]);
-        if (dataRecomendados) setRecomendados(dataRecomendados as AnuncioProps[]);
     }
 
     async function fetchCategorias() {
@@ -85,13 +129,49 @@ export function HomeScreen({ navigation }: any) {
         }
     }
 
-    useEffect(() => {
-        async function init() {
-            await fetchCategorias();
-            await loadData();
+    async function fetchRegioes() {
+        try {
+            const cached = await AsyncStorage.getItem('@regioes_cache');
+            if (cached) setListaRegioes(JSON.parse(cached));
+
+            // Adicionamos o <RegiaoProps> aqui também para o Supabase entender
+            const { data } = await supabase.from('localidades_ativas').select('*');
+
+            if (data) {
+                // Agora o TypeScript aceita o setListaRegioes(data) sem reclamar
+                setListaRegioes(data as RegiaoProps[]);
+                await AsyncStorage.setItem('@regioes_cache', JSON.stringify(data));
+            }
+        } catch (e) {
+            console.warn("Erro ao buscar regiões:", e);
         }
-        init();
-    }, []);
+    }
+
+    // Efeito para carregar as categorias uma única vez ao abrir o app
+    // 1. Efeito de Inicialização (Roda apenas quando o App abre)
+    useEffect(() => {
+        async function prepararApp() {
+            // Carrega as categorias e as regiões em paralelo para ser mais rápido
+            await Promise.all([
+                fetchCategorias(),
+                fetchRegioes()
+            ]);
+
+            // Após carregar as configurações, busca os primeiros anúncios
+            loadData(categoriaSelecionada || undefined, filtrosExtras);
+        }
+
+        prepararApp();
+    }, []); // [] significa que só executa uma vez ao montar o componente
+
+    // Efeito principal: recarrega os dados se a categoria ou os filtros mudarem
+    // 2. Efeito de Reação (Roda sempre que o usuário interage com filtros ou categorias)
+    useEffect(() => {
+        // Só dispara se não for a primeira carga (para não repetir o que o init já faz)
+        // Mas o React lida bem com isso, então podemos manter simples:
+        loadData(categoriaSelecionada || undefined, filtrosExtras);
+    }, [categoriaSelecionada, filtrosExtras]);
+    // ^ O segredo está aqui: sempre que essas variáveis mudarem, a lista atualiza sozinha.
 
     return (
         <ScrollView style={styleHome.container} showsVerticalScrollIndicator={false}>
@@ -123,7 +203,12 @@ export function HomeScreen({ navigation }: any) {
                     />
                 </View>
 
-                <TouchableOpacity style={styleHome.filterButton}>
+                <TouchableOpacity
+                    style={styleHome.filterButton}
+                    onPress={() => navigation.navigate('FilterScreen', {
+                        regioes: listaRegioes // Passando a lista que buscamos no fetchRegioes
+                    })}
+                >
                     <Icon name="tune" size={24} color="#2D6A4F" />
                 </TouchableOpacity>
             </View>
@@ -165,13 +250,20 @@ export function HomeScreen({ navigation }: any) {
                 </TouchableOpacity>
             </View>
 
-            <FlatList
-                horizontal
-                data={recentes}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <AdCard item={item} isLarge={true} />}
-                showsHorizontalScrollIndicator={false}
-            />
+            {loading ? (
+                <View style={{ flexDirection: 'row', paddingLeft: 15 }}>
+                    <AdCardSkeleton isLarge={true} />
+                    <AdCardSkeleton isLarge={true} />
+                </View>
+            ) : (
+                <FlatList
+                    horizontal
+                    data={recentes}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => <AdCard item={item} isLarge={true} />}
+                    showsHorizontalScrollIndicator={false}
+                />
+            )}
 
             {/* 5. Seção de Recomendados */}
             <View style={styleHome.sectionHeader}>
@@ -179,9 +271,38 @@ export function HomeScreen({ navigation }: any) {
             </View>
 
             <View style={styleHome.gridContainer}>
-                {recomendados.map((item) => (
-                    <AdCard key={item.id} item={item} isLarge={false} />
-                ))}
+                {loading ? (
+                    // 1. Enquanto carrega, mostra os Skeletons
+                    <>
+                        <AdCardSkeleton isLarge={false} />
+                        <AdCardSkeleton isLarge={false} />
+                        <AdCardSkeleton isLarge={false} />
+                        <AdCardSkeleton isLarge={false} />
+                    </>
+                ) : recomendados.length > 0 ? (
+                    // 2. Se carregou e tem anúncios, mostra o mapa de cards
+                    recomendados.map((item) => (
+                        <AdCard key={item.id} item={item} isLarge={false} />
+                    ))
+                ) : (
+                    <EmptyState /> // Seu componente com emoji triste
+                    // 3. Se carregou e a lista veio vazia (Filtro não encontrou nada)
+                    // <View style={EmptySyle.emptyContainer}>
+                    //     <Icon name="sentiment-dissatisfied" size={80} color="#CCC" />
+                    //     <Text style={EmptySyle.emptyTitle}>Não encontramos o que procura</Text>
+                    //     <Text style={EmptySyle.emptySubtitle}>
+                    //         Tente ajustar os filtros ou pesquisar por outro termo.
+                    //     </Text>
+
+                    //     {/* Botão extra para facilitar a vida do usuário */}
+                    //     <TouchableOpacity
+                    //         style={EmptySyle.resetFilterButton}
+                    //         onPress={() => loadData('tudo', null)}
+                    //     >
+                    //         <Text style={EmptySyle.resetFilterText}>Limpar Filtros</Text>
+                    //     </TouchableOpacity>
+                    // </View>
+                )}
             </View>
         </ScrollView>
     );

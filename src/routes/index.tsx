@@ -4,6 +4,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 // Suas importações
+import { FilterScreen } from '@/screens/FilterScreen/FilterScreen';
 import { HomeScreen } from "@/screens/home/HomeScreen";
 import { RegisterScreen } from '@/screens/register/RegisterScreen';
 import { LoginScreen } from "@/screens/login/LoginScreen";
@@ -40,6 +41,17 @@ function DrawerRoutes() {
                 }
             }}
         >
+
+            {/* 1. ADICIONE A HOME AQUI COMO PRIMEIRA OPÇÃO */}
+            <Drawer.Screen 
+                name="Home" 
+                component={HomeScreen} 
+                options={{ 
+                    drawerLabel: 'Início',
+                    drawerIcon: ({ color }) => <Icon name="home" size={24} color={color} />
+                }}
+            />
+            
             <Drawer.Screen 
                 name="Profile" 
                 component={HomeScreen} 
@@ -119,6 +131,15 @@ export function Routes() {
                 name="ConfirmCode"
                 component={ConfirmCodePass}
                 options={{ headerShown: false }}
+            />
+            {/* 2. Registre a tela de Filtros aqui */}
+            <Stack.Screen
+                name="FilterScreen"
+                component={FilterScreen}
+                options={{
+                    animation: 'slide_from_bottom', // Opcional: faz ela subir como no design
+                    presentation: 'modal' // Opcional: estilo de modal
+                }}
             />
 
         </Stack.Navigator>

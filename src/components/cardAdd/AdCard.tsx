@@ -1,11 +1,27 @@
 import React from 'react';
 import { View, Text, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { CardStyle } from './style'; // Certifique-se de que o nome no style.js é CardStyle
+import { CardStyle } from './style'; 
 
-export const AdCard = ({ item, isLarge }) => {
-    // Pegamos apenas a primeira imagem do array de no máximo 5
+interface AdCardProps {
+  item: {
+    id: string;
+    titulo: string;
+    preco: number;
+    tipo: 'venda' | 'doação';
+    imagens: string[];
+    estado: string;
+    cidade: string;
+  };
+  isLarge?: boolean;
+}
+
+export const AdCard = ({ item, isLarge }: AdCardProps) => {
+    // Pegamos apenas a primeira imagem do array
     const mainImage = item.imagens && item.imagens.length > 0 ? item.imagens[0] : null;
+    
+    // Função para deixar a primeira letra maiúscula (ex: manaus -> Manaus)
+    const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
     return (
         <View style={isLarge ? CardStyle.cardLarge : CardStyle.cardSmall}>
@@ -16,10 +32,18 @@ export const AdCard = ({ item, isLarge }) => {
                         style={isLarge ? CardStyle.imageLarge : CardStyle.imageSmall} 
                     />
                 )}
-                
+
                 {/* Badge de Venda ou Doação */}
-                <View style={CardStyle.badge}>
-                    <Text style={CardStyle.badgeText}>
+                <View style={[
+                    CardStyle.badge,
+                    // Se for doação, aplica o fundo verde claro que você escolheu
+                    item.tipo === 'doação' && { backgroundColor: '#2D6A4F' }
+                ]}>
+                    <Text style={[
+                        CardStyle.badgeText,
+                        // Se for doação, forçamos o texto a ser branco para não sumir no verde
+                        item.tipo === 'doação' && { color: '#FFFFFF' }
+                    ]}>
                         {item.tipo ? item.tipo.toUpperCase() : 'VENDA'}
                     </Text>
                 </View>
@@ -30,21 +54,19 @@ export const AdCard = ({ item, isLarge }) => {
                     {item.titulo}
                 </Text>
 
-                <View style={CardStyle.priceRow}>
-                    <Text style={CardStyle.priceText}>
-                        {item.preco === 0 ? 'GRÁTIS' : `R$ ${item.preco}/kg`}
+                {/* Localização - Agora visível em todos ou apenas no Large, dependendo do seu estilo */}
+                <View style={CardStyle.locationRow}>
+                    <Icon name="location-on" size={12} color="#666" />
+                    <Text style={CardStyle.locationText} numberOfLines={1}>
+                        {capitalize(item.cidade || 'Localização')} - {item.estado?.toUpperCase() || 'S/E'}
                     </Text>
                 </View>
 
-                {/* Localização aparece apenas no card grande (Recentes) conforme seu design */}
-                {isLarge && (
-                    <View style={CardStyle.locationRow}>
-                        <Icon name="location-on" size={14} color="#999" />
-                        <Text style={CardStyle.locationText}>
-                            {item.distancia}km de distância
-                        </Text>
-                    </View>
-                )}
+                <View style={CardStyle.priceRow}>
+                    <Text style={CardStyle.priceText}>
+                        {item.tipo === 'doação' ? 'GRÁTIS' : `R$ ${item.preco}/kg`}
+                    </Text>
+                </View>
             </View>
         </View>
     );

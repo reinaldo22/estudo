@@ -64,13 +64,21 @@ export const CardStyle = StyleSheet.create({
 
     // --- Card Pequeno (Grid Recomendados) ---
     cardSmall: {
-        width: cardWidth,
-        marginBottom: 20,
+        width: '48%',           // Em vez de Dimensions, use porcentagem para facilitar
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        marginBottom: 15,       // Espaço entre a linha de cima e a de baixo
+        // Adicione uma sombra leve para destacar os cards entre si
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     imageSmall: {
         width: '100%',
         height: 160,
-        borderRadius: 25,
+        borderRadius: 10,
         backgroundColor: '#E0E0E0',
     },
 
@@ -109,12 +117,13 @@ export const CardStyle = StyleSheet.create({
     locationRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 5,
+        marginTop: 2,
+        marginBottom: 2,
     },
     locationText: {
         fontSize: 12,
         color: '#999',
-        marginLeft: 4, // Dá o espaçamento entre o ícone e o texto
+        marginLeft: 2,
     },
     imageContainer: {
         position: 'relative', // Necessário para o Badge ficar por cima da imagem
