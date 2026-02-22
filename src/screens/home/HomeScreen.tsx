@@ -1,4 +1,4 @@
-import { View, Text, FlatList, ScrollView, TouchableOpacity, TextInput } from "react-native";
+import { View, Text, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { styleHome } from "./styles";
 import { supabase } from "@/services/supabase";
 import { AdCard } from "@/components/cardAdd/AdCard";
@@ -8,19 +8,16 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
 import { useRoute } from '@react-navigation/native';
 import { EmptyState } from "@/components/EmptyStateComponent/EmptyState";
-import { EmptySyle } from "@/components/EmptyStateComponent/style";
 
-
-// 1. Atualize a interface aqui no topo da HomeScreen
+// Interfaces mantidas conforme seu original
 interface AnuncioProps {
     id: string;
     titulo: string;
     preco: number;
     tipo: 'venda' | 'doação';
     imagens: string[];
-    estado: string;   // <--- ADICIONE ESTA LINHA
-    cidade: string;   // <--- ADICIONE ESTA LINHA
-    distancia?: number; // (Pode manter como opcional se for usar no futuro)
+    estado: string;
+    cidade: string;
 }
 
 interface CategoriaProps {
@@ -29,7 +26,6 @@ interface CategoriaProps {
     slug: string;
 }
 
-// Defina uma interface simples para a região
 interface RegiaoProps {
     estado: string;
     cidade: string;
@@ -37,159 +33,156 @@ interface RegiaoProps {
 
 export function HomeScreen({ navigation }: any) {
     const route = useRoute();
+    const params = route.params as any;
+
+    // --- LÓGICA DE FILTRO ATUALIZADA ---
+    // Como você usa filtrosExtra = (route.params as any)?.filtros, buscamos aqui:
+    const filtrosSalvos = params?.filtros; 
+    
+    // O botão só ativa se houver algum valor dentro do objeto 'filtros'
+    const temFiltroAtivo = !!(
+        filtrosSalvos?.precoMin || 
+        filtrosSalvos?.precoMax || 
+        filtrosSalvos?.tipo || 
+        filtrosSalvos?.estado ||
+        filtrosSalvos?.cidade
+    );
 
     const [recentes, setRecentes] = useState<AnuncioProps[]>([]);
     const [recomendados, setRecomendados] = useState<AnuncioProps[]>([]);
     const [listaCategorias, setListaCategorias] = useState<CategoriaProps[]>([]);
     const [search, setSearch] = useState("");
     const [categoriaSelecionada, setCategoriaSelecionada] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true); // NOVO ESTADO
+    const [loading, setLoading] = useState(true);
     const [listaRegioes, setListaRegioes] = useState<RegiaoProps[]>([]);
+    const [pagina, setPagina] = useState(0);
+    const [carregandoMais, setCarregandoMais] = useState(false);
+    const [temMais, setTemMais] = useState(true);
+    const ITENS_POR_PAGINA = 4;
 
-    // Captura os filtros que vêm da FilterScreen
-    const filtrosExtras = (route.params as any)?.filtros;
+    // Funções de carregamento mantidas
+    async function loadData(categoriaId?: string, filtrosExtra?: any, isMore = false) {
+        if (isMore) {
+            setCarregandoMais(true);
+        } else {
+            setLoading(true);
+            setPagina(0);
+        }
 
-    // Função para buscar dados do Supabase (com filtro de Categoria e Busca)
-    async function loadData(categoriaId?: string, filtrosExtra?: any) {
-        setLoading(true); // Começa o carregamento
-
-        // Debug: Veja no terminal o que está chegando do filtro
         try {
-            const { data: dataRecentes } = await supabase
-                .from('anuncios')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(5);
+            if (!isMore) {
+                const { data: dataRecentes } = await supabase
+                    .from('anuncios')
+                    .select('*')
+                    .eq('status', 'ativo')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+
+                if (dataRecentes) setRecentes(dataRecentes as AnuncioProps[]);
+            }
 
             let query = supabase.from('anuncios').select('*').eq('status', 'ativo');
 
-            // 1. Filtro por Categoria (da barra horizontal)
             const catId = categoriaId || categoriaSelecionada;
             if (catId && catId !== 'tudo') {
-                query = query.eq('id_categoria', catId);
+                query = query.eq('categoria_id', catId);
             }
-            // 2. Filtro por Texto da Busca (TextInput)
+
             if (search.trim() !== "") {
                 query = query.ilike('titulo', `%${search}%`);
             }
 
-            // 3. Filtros que vieram da Tela de Filtros (Estado, Cidade, Tipo, Preço)
             if (filtrosExtra) {
-                if (filtrosExtra.tipo) query = query.eq('tipo', filtrosExtra.tipo);
+                if (filtrosExtra.tipo && filtrosExtra.tipo !== 'todos') query = query.eq('tipo', filtrosExtra.tipo);
                 if (filtrosExtra.estado) query = query.ilike('estado', `%${filtrosExtra.estado}%`);
                 if (filtrosExtra.cidade) query = query.ilike('cidade', `%${filtrosExtra.cidade}%`);
-
-                if (filtrosExtra.tipo !== 'doação') {
-                    if (filtrosExtra.precoMin && filtrosExtra.precoMin > 0) {
-                        query = query.gte('preco', filtrosExtra.precoMin);
-                    }
-                    if (filtrosExtra.precoMax && filtrosExtra.precoMax > 0) {
-                        query = query.lte('preco', filtrosExtra.precoMax);
-                    }
-                }
+                if (filtrosExtra.precoMin) query = query.gte('preco', parseFloat(filtrosExtra.precoMin));
+                if (filtrosExtra.precoMax) query = query.lte('preco', parseFloat(filtrosExtra.precoMax));
             }
 
-            const { data: dataRecomendados } = await query;
+            const paginaAtual = isMore ? pagina + 1 : 0;
+            const offset = paginaAtual * ITENS_POR_PAGINA;
+            const limite = offset + ITENS_POR_PAGINA - 1;
 
-            if (dataRecentes) setRecentes(dataRecentes as AnuncioProps[]);
-            if (dataRecomendados) setRecomendados(dataRecomendados as AnuncioProps[]);
+            const { data, error } = await query
+                .range(offset, limite)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data) {
+                if (isMore) {
+                    setRecomendados(prev => [...prev, ...data]);
+                    setPagina(paginaAtual);
+                } else {
+                    setRecomendados(data as AnuncioProps[]);
+                }
+                setTemMais(data.length === ITENS_POR_PAGINA);
+            }
+
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
         } finally {
-            setLoading(false); // Finaliza o carregamento
+            setLoading(false);
+            setCarregandoMais(false);
         }
     }
 
     async function fetchCategorias() {
         try {
             const cachedCats = await AsyncStorage.getItem('@categorias_cache');
-
             if (cachedCats !== null) {
                 const parsed = JSON.parse(cachedCats);
                 setListaCategorias(parsed);
-                if (parsed.length > 0 && !categoriaSelecionada) {
-                    setCategoriaSelecionada(parsed[0].id);
-                }
+                if (parsed.length > 0 && !categoriaSelecionada) setCategoriaSelecionada(parsed[0].id);
                 return;
             }
-
-            const { data } = await supabase
-                .from('categorias')
-                .select('*')
-                .eq('ativo', true)
-                .order('nome', { ascending: true });
-
+            const { data } = await supabase.from('categorias').select('*').eq('ativo', true).order('nome', { ascending: true });
             if (data) {
                 setListaCategorias(data as CategoriaProps[]);
                 await AsyncStorage.setItem('@categorias_cache', JSON.stringify(data));
-                if (data.length > 0) setCategoriaSelecionada(data[0].id);
+                if (!categoriaSelecionada) setCategoriaSelecionada(data[0].id);
             }
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     }
 
     async function fetchRegioes() {
         try {
             const cached = await AsyncStorage.getItem('@regioes_cache');
             if (cached) setListaRegioes(JSON.parse(cached));
-
-            // Adicionamos o <RegiaoProps> aqui também para o Supabase entender
             const { data } = await supabase.from('localidades_ativas').select('*');
-
             if (data) {
-                // Agora o TypeScript aceita o setListaRegioes(data) sem reclamar
                 setListaRegioes(data as RegiaoProps[]);
                 await AsyncStorage.setItem('@regioes_cache', JSON.stringify(data));
             }
-        } catch (e) {
-            console.warn("Erro ao buscar regiões:", e);
-        }
+        } catch (e) { console.warn(e); }
     }
 
-    // Efeito para carregar as categorias uma única vez ao abrir o app
-    // 1. Efeito de Inicialização (Roda apenas quando o App abre)
     useEffect(() => {
-        async function prepararApp() {
-            // Carrega as categorias e as regiões em paralelo para ser mais rápido
-            await Promise.all([
-                fetchCategorias(),
-                fetchRegioes()
-            ]);
+        fetchCategorias();
+        fetchRegioes();
+    }, []);
 
-            // Após carregar as configurações, busca os primeiros anúncios
-            loadData(categoriaSelecionada || undefined, filtrosExtras);
+    useEffect(() => {
+        if (categoriaSelecionada) {
+            loadData(categoriaSelecionada, filtrosSalvos); // Usando filtrosSalvos aqui
         }
-
-        prepararApp();
-    }, []); // [] significa que só executa uma vez ao montar o componente
-
-    // Efeito principal: recarrega os dados se a categoria ou os filtros mudarem
-    // 2. Efeito de Reação (Roda sempre que o usuário interage com filtros ou categorias)
-    useEffect(() => {
-        // Só dispara se não for a primeira carga (para não repetir o que o init já faz)
-        // Mas o React lida bem com isso, então podemos manter simples:
-        loadData(categoriaSelecionada || undefined, filtrosExtras);
-    }, [categoriaSelecionada, filtrosExtras]);
-    // ^ O segredo está aqui: sempre que essas variáveis mudarem, a lista atualiza sozinha.
+    }, [categoriaSelecionada, filtrosSalvos]);
 
     return (
         <ScrollView style={styleHome.container} showsVerticalScrollIndicator={false}>
             {/* 1. Header */}
             <View style={styleHome.header}>
-
-                {/* ESTE É O BOTÃO QUE ABRE O DRAWER */}
                 <TouchableOpacity onPress={() => navigation.openDrawer()}>
                     <Icon name="menu" size={28} color="#000" />
                 </TouchableOpacity>
-
                 <Text style={styleHome.logo}>EcoMarket</Text>
                 <TouchableOpacity>
                     <Icon name="notifications-none" size={28} color="#000" />
                 </TouchableOpacity>
             </View>
 
-            {/* 2. Barra de Busca e Filtro (Correção da Estrutura) */}
+            {/* 2. Barra de Busca e Filtro Atualizada */}
             <View style={styleHome.searchContainer}>
                 <View style={styleHome.searchBar}>
                     <Icon name="search" size={22} color="#999" />
@@ -198,22 +191,30 @@ export function HomeScreen({ navigation }: any) {
                         style={styleHome.searchInput}
                         value={search}
                         onChangeText={(text) => setSearch(text)}
-                        placeholderTextColor="#999"
-                        onSubmitEditing={() => loadData(categoriaSelecionada || 'tudo')}
+                        onSubmitEditing={() => loadData(categoriaSelecionada || 'tudo', filtrosSalvos)}
                     />
                 </View>
 
                 <TouchableOpacity
-                    style={styleHome.filterButton}
+                    style={[
+                        styleHome.filterButton,
+                        temFiltroAtivo && styleHome.filterButtonActive // Muda a cor no seu style.ts
+                    ]}
                     onPress={() => navigation.navigate('FilterScreen', {
-                        regioes: listaRegioes // Passando a lista que buscamos no fetchRegioes
+                        regioes: listaRegioes,
+                        filtrosAtuais: filtrosSalvos // Envia os filtros para a tela de filtro "lembrar"
                     })}
                 >
-                    <Icon name="tune" size={24} color="#2D6A4F" />
+                    <Icon
+                        name="tune"
+                        size={24}
+                        color={temFiltroAtivo ? "#FFF" : "#2D6A4F"} // Muda a cor do ícone
+                    />
+                    {temFiltroAtivo && <View style={styleHome.filterBadge} />}
                 </TouchableOpacity>
             </View>
 
-            {/* 3. Barra de Categorias */}
+            {/* Categorias */}
             <FlatList
                 horizontal
                 data={listaCategorias}
@@ -225,15 +226,9 @@ export function HomeScreen({ navigation }: any) {
                     return (
                         <TouchableOpacity
                             style={styleHome.categoryItem}
-                            onPress={() => {
-                                setCategoriaSelecionada(item.id);
-                                loadData(item.id);
-                            }}
+                            onPress={() => setCategoriaSelecionada(item.id)}
                         >
-                            <Text style={[
-                                styleHome.categoryText,
-                                isSelected && styleHome.categoryTextSelected
-                            ]}>
+                            <Text style={[styleHome.categoryText, isSelected && styleHome.categoryTextSelected]}>
                                 {item.nome}
                             </Text>
                             {isSelected && <View style={styleHome.selectedIndicator} />}
@@ -242,12 +237,9 @@ export function HomeScreen({ navigation }: any) {
                 }}
             />
 
-            {/* 4. Seção de Recentes */}
+            {/* Listagens de Cards (Recentes e Recomendados) seguem seu padrão... */}
             <View style={styleHome.sectionHeader}>
                 <Text style={styleHome.sectionTitle}>Anúncios Recentes</Text>
-                <TouchableOpacity>
-                    <Text style={styleHome.viewAll}>VER TUDO</Text>
-                </TouchableOpacity>
             </View>
 
             {loading ? (
@@ -265,45 +257,35 @@ export function HomeScreen({ navigation }: any) {
                 />
             )}
 
-            {/* 5. Seção de Recomendados */}
             <View style={styleHome.sectionHeader}>
                 <Text style={styleHome.sectionTitle}>Recomendados para Você</Text>
             </View>
 
             <View style={styleHome.gridContainer}>
                 {loading ? (
-                    // 1. Enquanto carrega, mostra os Skeletons
                     <>
-                        <AdCardSkeleton isLarge={false} />
-                        <AdCardSkeleton isLarge={false} />
-                        <AdCardSkeleton isLarge={false} />
-                        <AdCardSkeleton isLarge={false} />
+                        <AdCardSkeleton isLarge={false} /><AdCardSkeleton isLarge={false} />
                     </>
                 ) : recomendados.length > 0 ? (
-                    // 2. Se carregou e tem anúncios, mostra o mapa de cards
                     recomendados.map((item) => (
                         <AdCard key={item.id} item={item} isLarge={false} />
                     ))
                 ) : (
-                    <EmptyState /> // Seu componente com emoji triste
-                    // 3. Se carregou e a lista veio vazia (Filtro não encontrou nada)
-                    // <View style={EmptySyle.emptyContainer}>
-                    //     <Icon name="sentiment-dissatisfied" size={80} color="#CCC" />
-                    //     <Text style={EmptySyle.emptyTitle}>Não encontramos o que procura</Text>
-                    //     <Text style={EmptySyle.emptySubtitle}>
-                    //         Tente ajustar os filtros ou pesquisar por outro termo.
-                    //     </Text>
-
-                    //     {/* Botão extra para facilitar a vida do usuário */}
-                    //     <TouchableOpacity
-                    //         style={EmptySyle.resetFilterButton}
-                    //         onPress={() => loadData('tudo', null)}
-                    //     >
-                    //         <Text style={EmptySyle.resetFilterText}>Limpar Filtros</Text>
-                    //     </TouchableOpacity>
-                    // </View>
+                    <EmptyState />
                 )}
             </View>
+
+            {temMais && recomendados.length > 0 && (
+                <TouchableOpacity
+                    style={styleHome.loadMoreButton}
+                    onPress={() => loadData(categoriaSelecionada || undefined, filtrosSalvos, true)}
+                    disabled={carregandoMais}
+                >
+                    {carregandoMais ? <ActivityIndicator color="#2D6A4F" /> : <Text style={styleHome.loadMoreText}>Carregar mais anúncios</Text>}
+                </TouchableOpacity>
+            )}
+
+            <View style={{ height: 40 }} />
         </ScrollView>
     );
 }

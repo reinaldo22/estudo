@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native'; // Adicionado TouchableOpacity
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { CardStyle } from './style'; 
+import { useNavigation } from '@react-navigation/native'; // Importado para navegação
 
 interface AdCardProps {
   item: {
@@ -17,6 +18,8 @@ interface AdCardProps {
 }
 
 export const AdCard = ({ item, isLarge }: AdCardProps) => {
+    const navigation = useNavigation<any>(); // Inicializando o hook de navegação
+
     // Pegamos apenas a primeira imagem do array
     const mainImage = item.imagens && item.imagens.length > 0 ? item.imagens[0] : null;
     
@@ -24,7 +27,11 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
     const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
     return (
-        <View style={isLarge ? CardStyle.cardLarge : CardStyle.cardSmall}>
+        <TouchableOpacity 
+            activeOpacity={0.8} // Efeito visual de clique
+            onPress={() => navigation.navigate('Detalhes', { adId: item.id })}
+            style={isLarge ? CardStyle.cardLarge : CardStyle.cardSmall}
+        >
             <View style={CardStyle.imageContainer}>
                 {mainImage && (
                     <Image 
@@ -36,12 +43,10 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
                 {/* Badge de Venda ou Doação */}
                 <View style={[
                     CardStyle.badge,
-                    // Se for doação, aplica o fundo verde claro que você escolheu
                     item.tipo === 'doação' && { backgroundColor: '#2D6A4F' }
                 ]}>
                     <Text style={[
                         CardStyle.badgeText,
-                        // Se for doação, forçamos o texto a ser branco para não sumir no verde
                         item.tipo === 'doação' && { color: '#FFFFFF' }
                     ]}>
                         {item.tipo ? item.tipo.toUpperCase() : 'VENDA'}
@@ -54,7 +59,7 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
                     {item.titulo}
                 </Text>
 
-                {/* Localização - Agora visível em todos ou apenas no Large, dependendo do seu estilo */}
+                {/* Localização */}
                 <View style={CardStyle.locationRow}>
                     <Icon name="location-on" size={12} color="#666" />
                     <Text style={CardStyle.locationText} numberOfLines={1}>
@@ -68,6 +73,6 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
                     </Text>
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };

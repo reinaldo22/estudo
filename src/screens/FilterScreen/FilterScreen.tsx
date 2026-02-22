@@ -1,38 +1,35 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { styleFilter } from './style'; // Vamos criar esse arquivo
+import { styleFilter } from './style';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Picker } from '@react-native-picker/picker'; // Certifique-se de ter instalado
+import { Picker } from '@react-native-picker/picker';
 import { maskCurrency, unmaskCurrency } from '@/utils/formatMask';
 
-
-
-export function FilterScreen({ navigation: any }) {
+export function FilterScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute();
 
-    // Captura as regiões enviadas pela HomeScreen
+    // Captura os dados vindos da Home
     const listaRegioes = (route.params as any)?.regioes || [];
+    const { filtrosAtuais } = (route.params as any) || {};
 
-    const [tipo, setTipo] = useState<'venda' | 'doação' | null>(null);
-    const [precoMin, setPrecoMin] = useState('');
-    const [precoMax, setPrecoMax] = useState('');
-    // Agora iniciamos vazios para o Picker
-    const [estado, setEstado] = useState('');
-    const [cidade, setCidade] = useState('');
+    // --- ESTADOS INICIALIZADOS COM MEMÓRIA ---
+    // Se filtrosAtuais existir, usamos ele, senão usamos o padrão
+    const [tipo, setTipo] = useState<'venda' | 'doação' | null>(filtrosAtuais?.tipo || null);
+    
+    // Para o preço, precisamos aplicar a máscara no valor numérico que vem do banco/home
+    const [precoMin, setPrecoMin] = useState(
+        filtrosAtuais?.precoMin ? maskCurrency(filtrosAtuais.precoMin.toString()) : ''
+    );
+    const [precoMax, setPrecoMax] = useState(
+        filtrosAtuais?.precoMax ? maskCurrency(filtrosAtuais.precoMax.toString()) : ''
+    );
+    
+    const [estado, setEstado] = useState(filtrosAtuais?.estado || '');
+    const [cidade, setCidade] = useState(filtrosAtuais?.cidade || '');
 
-    // Verificamos se é doação para facilitar o uso no JSX
     const isDoacao = tipo === 'doação';
-
-    // Se o usuário clicar em "Doação", limpamos os preços automaticamente
-    const handleSetTipo = (novoTipo: 'venda' | 'doação') => {
-        setTipo(novoTipo);
-        if (novoTipo === 'doação') {
-            setPrecoMin('');
-            setPrecoMax('');
-        }
-    };
 
     const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
@@ -45,30 +42,29 @@ export function FilterScreen({ navigation: any }) {
     };
 
     const handleApply = () => {
-        // 1. Transformamos em números puros (unmask)
+        // Usamos o || 0 para garantir que valorMin e valorMax nunca sejam null/undefined na lógica abaixo
         const valorMin = unmaskCurrency(precoMin) || 0;
         const valorMax = unmaskCurrency(precoMax) || 0;
 
-        // 2. Validação: Impede valores negativos (embora a máscara já ajude)
+        // 2. Validação: Impede valores negativos
         if (valorMin < 0 || valorMax < 0) {
             alert("Os valores não podem ser negativos.");
             return;
         }
 
-        // 3. Validação: Se o máximo for preenchido, ele deve ser maior que o mínimo
+        // 3. Agora o TS não reclama mais, pois valorMax é garantidamente um número
         if (valorMax > 0 && valorMax < valorMin) {
             alert("O preço máximo não pode ser menor que o preço mínimo.");
             return;
         }
 
-        // 4. Envio limpo para a Home
+        // 4. Envio para a Home
         navigation.navigate('Drawer', {
             screen: 'Home',
             params: {
                 filtros: {
                     tipo,
-                    // Se for doação, enviamos null para os preços independente do que houver nos campos
-                    precoMin: isDoacao ? null : valorMin, 
+                    precoMin: isDoacao ? null : valorMin,
                     precoMax: isDoacao ? null : valorMax,
                     estado,
                     cidade
@@ -83,11 +79,15 @@ export function FilterScreen({ navigation: any }) {
         setPrecoMax('');
         setEstado('');
         setCidade('');
+        // Importante: Notificar a Home que os filtros foram limpos
+        navigation.navigate('Drawer', {
+            screen: 'Home',
+            params: { filtros: {} }
+        });
     };
 
     return (
         <View style={styleFilter.container}>
-            {/* Header */}
             <View style={styleFilter.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Icon name="close" size={28} color="#000" />
@@ -99,7 +99,6 @@ export function FilterScreen({ navigation: any }) {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-                {/* 1. Alteração nos botões de Tipo */}
                 <Text style={styleFilter.sectionTitle}>Tipo de Anúncio</Text>
                 <View style={styleFilter.row}>
                     <TouchableOpacity
@@ -112,15 +111,14 @@ export function FilterScreen({ navigation: any }) {
                         style={[styleFilter.chip, tipo === 'doação' && styleFilter.chipSelected]}
                         onPress={() => {
                             setTipo('doação');
-                            setPrecoMin(''); // Limpa o preço ao selecionar doação
-                            setPrecoMax(''); // Limpa o preço ao selecionar doação
+                            setPrecoMin('');
+                            setPrecoMax('');
                         }}
                     >
                         <Text style={[styleFilter.chipText, tipo === 'doação' && styleFilter.chipTextSelected]}>Doação</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Localização - PICKER DINÂMICO */}
                 <Text style={styleFilter.sectionTitle}>Região</Text>
                 <View style={styleFilter.pickerContainer}>
                     <Picker
@@ -145,7 +143,6 @@ export function FilterScreen({ navigation: any }) {
                     </Picker>
                 </View>
 
-                {/* 2. Alteração na Faixa de Preço */}
                 <Text style={[styleFilter.sectionTitle, isDoacao && { color: '#999' }]}>
                     Faixa de Preço (por kg) {isDoacao && '- Indisponível'}
                 </Text>
@@ -154,28 +151,27 @@ export function FilterScreen({ navigation: any }) {
                         style={[
                             styleFilter.input, 
                             { flex: 1, marginRight: 10 },
-                            isDoacao && { backgroundColor: '#F0F0F0', color: '#999', borderColor: '#EEE' } // Estilo de desabilitado
+                            isDoacao && { backgroundColor: '#F0F0F0', color: '#999', borderColor: '#EEE' }
                         ]}
                         placeholder="Mín R$"
                         keyboardType="number-pad"
                         value={precoMin}
                         onChangeText={handlePrecoMinChange}
-                        editable={!isDoacao} // Impede a digitação se for doação
+                        editable={!isDoacao}
                     />
                     <TextInput
                         style={[
                             styleFilter.input, 
                             { flex: 1 },
-                            isDoacao && { backgroundColor: '#F0F0F0', color: '#999', borderColor: '#EEE' } // Estilo de desabilitado
+                            isDoacao && { backgroundColor: '#F0F0F0', color: '#999', borderColor: '#EEE' }
                         ]}
                         placeholder="Máx R$"
                         keyboardType="number-pad"
                         value={precoMax}
                         onChangeText={handlePrecoMaxChange}
-                        editable={!isDoacao} // Impede a digitação se for doação
+                        editable={!isDoacao}
                     />
                 </View>
-
             </ScrollView>
 
             <TouchableOpacity style={styleFilter.applyButton} onPress={handleApply}>

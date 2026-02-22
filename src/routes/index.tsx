@@ -12,6 +12,8 @@ import { SendEmailPass } from "@/screens/forgotPass/SendEmailPasswordScreen/Send
 import { ConfirmCodePass } from "@/screens/forgotPass/ConfirmCodeScreen/ConfirmCodePass";
 import { NewPasswordScreen } from "@/screens/forgotPass/newPass/NewPasswordScreen";
 import { DrawerContent } from '@/components/drawer/DrawerContent';
+import { AdDetail } from '@/screens/detailProductScreen/AdDetail';
+import { ProfileScreen } from '@/screens/ProfileScreen/ProfileScreen';
 
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -54,7 +56,7 @@ function DrawerRoutes() {
             
             <Drawer.Screen 
                 name="Profile" 
-                component={HomeScreen} 
+                component={ProfileScreen} 
                 options={{ 
                     drawerLabel: 'Perfil',
                     drawerIcon: ({ color }) => <Icon name="person-outline" size={24} color={color} />
@@ -140,6 +142,10 @@ export function Routes() {
                     animation: 'slide_from_bottom', // Opcional: faz ela subir como no design
                     presentation: 'modal' // Opcional: estilo de modal
                 }}
+            />
+
+            <Stack.Screen name="Detalhes"
+                component={AdDetail}
             />
 
         </Stack.Navigator>
