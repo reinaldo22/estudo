@@ -8,13 +8,13 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    SafeAreaView,
     Dimensions,
     FlatList
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoute, useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { adActions } from './Actions'; // Suas novas funções
 import { styleDetail } from './style';
@@ -118,7 +118,7 @@ export function AdDetail() {
 
                     {/* Ações de Topo Refatoradas */}
                     <View style={styleDetail.headerActions}>
-                        
+
                         {/* { <TouchableOpacity 
                             style={styleDetail.actionButton}
                             onPress={() => adActions.compartilhar(ad)} // <-- Função Externa

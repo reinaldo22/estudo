@@ -1,20 +1,20 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native'; // Adicionado TouchableOpacity
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { CardStyle } from './style'; 
+import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { CardStyle } from './style';
 import { useNavigation } from '@react-navigation/native'; // Importado para navegação
 
 interface AdCardProps {
-  item: {
-    id: string;
-    titulo: string;
-    preco: number;
-    tipo: 'venda' | 'doação';
-    imagens: string[];
-    estado: string;
-    cidade: string;
-  };
-  isLarge?: boolean;
+    item: {
+        id: string;
+        titulo: string;
+        preco: number;
+        tipo: 'venda' | 'doação';
+        imagens: string[];
+        estado: string;
+        cidade: string;
+    };
+    isLarge?: boolean;
 }
 
 export const AdCard = ({ item, isLarge }: AdCardProps) => {
@@ -22,21 +22,21 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
 
     // Pegamos apenas a primeira imagem do array
     const mainImage = item.imagens && item.imagens.length > 0 ? item.imagens[0] : null;
-    
+
     // Função para deixar a primeira letra maiúscula (ex: manaus -> Manaus)
     const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
     return (
-        <TouchableOpacity 
+        <TouchableOpacity
             activeOpacity={0.8} // Efeito visual de clique
             onPress={() => navigation.navigate('Detalhes', { adId: item.id })}
             style={isLarge ? CardStyle.cardLarge : CardStyle.cardSmall}
         >
             <View style={CardStyle.imageContainer}>
                 {mainImage && (
-                    <Image 
-                        source={{ uri: mainImage }} 
-                        style={isLarge ? CardStyle.imageLarge : CardStyle.imageSmall} 
+                    <Image
+                        source={{ uri: mainImage }}
+                        style={isLarge ? CardStyle.imageLarge : CardStyle.imageSmall}
                     />
                 )}
 

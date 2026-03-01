@@ -4,7 +4,7 @@ import { supabase } from "@/services/supabase";
 import { AdCard } from "@/components/cardAdd/AdCard";
 import React, { useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
 import { useRoute } from '@react-navigation/native';
 import { EmptyState } from "@/components/EmptyStateComponent/EmptyState";
@@ -37,13 +37,13 @@ export function HomeScreen({ navigation }: any) {
 
     // --- LÓGICA DE FILTRO ATUALIZADA ---
     // Como você usa filtrosExtra = (route.params as any)?.filtros, buscamos aqui:
-    const filtrosSalvos = params?.filtros; 
-    
+    const filtrosSalvos = params?.filtros;
+
     // O botão só ativa se houver algum valor dentro do objeto 'filtros'
     const temFiltroAtivo = !!(
-        filtrosSalvos?.precoMin || 
-        filtrosSalvos?.precoMax || 
-        filtrosSalvos?.tipo || 
+        filtrosSalvos?.precoMin ||
+        filtrosSalvos?.precoMax ||
+        filtrosSalvos?.tipo ||
         filtrosSalvos?.estado ||
         filtrosSalvos?.cidade
     );

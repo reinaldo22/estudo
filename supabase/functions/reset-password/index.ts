@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
       .update({
         reset_code: null,
         reset_code_expires_at: null,
+        is_active: true,
       })
       .eq("email", email);
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 // Suas importações
 import { FilterScreen } from '@/screens/FilterScreen/FilterScreen';
@@ -24,18 +24,18 @@ function DrawerRoutes() {
         <Drawer.Navigator
             drawerContent={(props) => <DrawerContent {...props} />}
             screenOptions={{
-                headerShown: false, 
+                headerShown: false,
                 // --- AJUSTES CONTRA O BUG DE ABRIR SOZINHO ---
                 drawerType: 'front',           // Sobrepõe a tela (evita empurrar o layout)
                 swipeEnabled: true,            // Permite o gesto, mas não força a abertura
                 // --------------------------------------------
-                drawerActiveBackgroundColor: 'transparent', 
+                drawerActiveBackgroundColor: 'transparent',
                 drawerActiveTintColor: '#2D6A4F',
                 drawerInactiveTintColor: '#4A4A4A',
-                drawerLabelStyle: { 
+                drawerLabelStyle: {
                     marginLeft: 5,             // Espaçamento entre ícone e texto
                     fontSize: 16,
-                    fontWeight: '500' 
+                    fontWeight: '500'
                 },
                 drawerItemStyle: {
                     marginVertical: 5,
@@ -45,46 +45,46 @@ function DrawerRoutes() {
         >
 
             {/* 1. ADICIONE A HOME AQUI COMO PRIMEIRA OPÇÃO */}
-            <Drawer.Screen 
-                name="Home" 
-                component={HomeScreen} 
-                options={{ 
+            <Drawer.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{
                     drawerLabel: 'Início',
                     drawerIcon: ({ color }) => <Icon name="home" size={24} color={color} />
                 }}
             />
-            
-            <Drawer.Screen 
-                name="Profile" 
-                component={ProfileScreen} 
-                options={{ 
+
+            <Drawer.Screen
+                name="Profile"
+                component={ProfileScreen}
+                options={{
                     drawerLabel: 'Perfil',
                     drawerIcon: ({ color }) => <Icon name="person-outline" size={24} color={color} />
                 }}
             />
 
-            <Drawer.Screen 
-                name="MyAds" 
-                component={HomeScreen} 
-                options={{ 
+            <Drawer.Screen
+                name="MyAds"
+                component={HomeScreen}
+                options={{
                     drawerLabel: 'Meus anúncios',
                     drawerIcon: ({ color }) => <Icon name="inventory-2" size={24} color={color} />
                 }}
             />
 
-            <Drawer.Screen 
-                name="Config" 
-                component={HomeScreen} 
-                options={{ 
+            <Drawer.Screen
+                name="Config"
+                component={HomeScreen}
+                options={{
                     drawerLabel: 'Configurações',
                     drawerIcon: ({ color }) => <Icon name="settings" size={24} color={color} />
                 }}
             />
 
-            <Drawer.Screen 
-                name="Helper" 
-                component={HomeScreen} 
-                options={{ 
+            <Drawer.Screen
+                name="Helper"
+                component={HomeScreen}
+                options={{
                     drawerLabel: 'Contato e Suporte',
                     drawerIcon: ({ color }) => <Icon name="info" size={24} color={color} />
                 }}
@@ -97,7 +97,7 @@ function DrawerRoutes() {
 export function Routes() {
     return (
         <Stack.Navigator initialRouteName="Drawer">
-            
+
             {/* O Drawer agora é a tela principal após o login */}
             <Stack.Screen
                 name="Drawer"

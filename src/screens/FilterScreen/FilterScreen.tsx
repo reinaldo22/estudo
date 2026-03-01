@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { styleFilter } from './style';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
@@ -17,7 +17,7 @@ export function FilterScreen() {
     // --- ESTADOS INICIALIZADOS COM MEMÓRIA ---
     // Se filtrosAtuais existir, usamos ele, senão usamos o padrão
     const [tipo, setTipo] = useState<'venda' | 'doação' | null>(filtrosAtuais?.tipo || null);
-    
+
     // Para o preço, precisamos aplicar a máscara no valor numérico que vem do banco/home
     const [precoMin, setPrecoMin] = useState(
         filtrosAtuais?.precoMin ? maskCurrency(filtrosAtuais.precoMin.toString()) : ''
@@ -25,7 +25,7 @@ export function FilterScreen() {
     const [precoMax, setPrecoMax] = useState(
         filtrosAtuais?.precoMax ? maskCurrency(filtrosAtuais.precoMax.toString()) : ''
     );
-    
+
     const [estado, setEstado] = useState(filtrosAtuais?.estado || '');
     const [cidade, setCidade] = useState(filtrosAtuais?.cidade || '');
 
@@ -149,7 +149,7 @@ export function FilterScreen() {
                 <View style={styleFilter.row}>
                     <TextInput
                         style={[
-                            styleFilter.input, 
+                            styleFilter.input,
                             { flex: 1, marginRight: 10 },
                             isDoacao && { backgroundColor: '#F0F0F0', color: '#999', borderColor: '#EEE' }
                         ]}
@@ -161,7 +161,7 @@ export function FilterScreen() {
                     />
                     <TextInput
                         style={[
-                            styleFilter.input, 
+                            styleFilter.input,
                             { flex: 1 },
                             isDoacao && { backgroundColor: '#F0F0F0', color: '#999', borderColor: '#EEE' }
                         ]}

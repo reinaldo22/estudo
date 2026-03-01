@@ -55,7 +55,21 @@ export function LoginScreen() {
                     Alert.alert("Erro", authError.message);
                 }
             } else {
-                navigation.replace('Drawer'); // 'replace' impede que o usuário volte para o login ao clicar em voltar
+                // Verificação de conta ativa (Desativação)
+                const { data: profile, error: profileError } = await supabase
+                    .from('profile')
+                    .select('is_active')
+                    .eq('id', authData.user.id)
+                    .single();
+
+                if (!profileError && profile && profile.is_active === false) {
+                    await supabase.auth.signOut();
+                    Alert.alert("Conta Desativada", "Sua conta está inativa. Redefina sua senha para reativar.");
+                    setLoading(false);
+                    return;
+                }
+
+                navigation.replace('Drawer');
             }
         } catch (error) {
             Alert.alert("Erro", "Ocorreu um erro inesperado.");
