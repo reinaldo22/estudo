@@ -275,8 +275,8 @@ export function ProfileScreen({ navigation }: any) {
         <SafeAreaView style={styleProfile.container}>
             {/* Header com botões de ação */}
             <View style={styleProfile.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Icon name="chevron-left" size={32} color="#333" />
+                <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                    <Icon name="menu" size={32} color="#333" />
                 </TouchableOpacity>
                 <Text style={styleProfile.headerTitle}>PERFIL</Text>
                 <TouchableOpacity onPress={handleOptionsPress}>

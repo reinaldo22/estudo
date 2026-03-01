@@ -97,7 +97,7 @@ export function DrawerContent(props: any) {
                         style={DrawerStyle.avatar}
                     />
                     <View style={DrawerStyle.headerTextContainer}>
-                        <Text style={DrawerStyle.userName} numberOfLines={1}>
+                        <Text style={DrawerStyle.userName}>
                             {user ? user.name : "Convidado"}
                         </Text>
                         <Text style={DrawerStyle.memberSince}>

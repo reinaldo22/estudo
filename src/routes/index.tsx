@@ -14,6 +14,8 @@ import { NewPasswordScreen } from "@/screens/forgotPass/newPass/NewPasswordScree
 import { DrawerContent } from '@/components/drawer/DrawerContent';
 import { AdDetail } from '@/screens/detailProductScreen/AdDetail';
 import { ProfileScreen } from '@/screens/ProfileScreen/ProfileScreen';
+import { MyAdsScreen } from '@/screens/MyAds/MyAdsScreen';
+import { CreateAdScreen } from '@/screens/CreateAd/CreateAdScreen';
 
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -65,7 +67,7 @@ function DrawerRoutes() {
 
             <Drawer.Screen
                 name="MyAds"
-                component={HomeScreen}
+                component={MyAdsScreen}
                 options={{
                     drawerLabel: 'Meus anúncios',
                     drawerIcon: ({ color }) => <Icon name="inventory-2" size={24} color={color} />
@@ -146,6 +148,12 @@ export function Routes() {
 
             <Stack.Screen name="Detalhes"
                 component={AdDetail}
+            />
+
+            <Stack.Screen
+                name="CreateAd"
+                component={CreateAdScreen}
+                options={{ headerShown: false }}
             />
 
         </Stack.Navigator>
