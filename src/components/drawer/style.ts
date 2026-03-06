@@ -4,7 +4,7 @@ const { width } = Dimensions.get('window');
 export const DrawerStyle = StyleSheet.create({
     // Container do topo (Fundo cinza claro do design)
     headerContainer: {
-        backgroundColor: '#F4F7F6', 
+        backgroundColor: '#F4F7F6',
         paddingTop: 50,
         paddingBottom: 30,
         paddingHorizontal: 20,
@@ -37,6 +37,7 @@ export const DrawerStyle = StyleSheet.create({
     },
     headerTextContainer: {
         marginLeft: 15,
+        flex: 1,
     },
     userName: {
         fontSize: 18,
@@ -67,12 +68,12 @@ export const DrawerStyle = StyleSheet.create({
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 10,
+        paddingVertical: 30,
     },
     logoutText: {
         fontSize: 16,
         fontWeight: 'bold',
         color: '#E74C3C', // Vermelho do design
-        marginLeft: 15,
+        marginLeft: 20,
     },
 });

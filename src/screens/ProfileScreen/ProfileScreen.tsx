@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { View, Text, Image, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { styleProfile } from './style';
 import { supabase } from '@/services/supabase';
+import { CommonActions } from '@react-navigation/native';
 import { EditProfileModal } from './EditProfileModal/EditProfileModal';
 
 export function ProfileScreen({ navigation }: any) {
@@ -55,6 +57,106 @@ export function ProfileScreen({ navigation }: any) {
     }
 
     // 2. Função que será chamada quando o usuário clicar em salvar no Modal
+    const handleLogout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            Alert.alert('Erro', 'Não foi possível sair da conta.');
+        } else {
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' }], // Certifique-se que o nome da rota está correto
+                })
+            );
+        }
+    };
+
+    const handleDeactivate = async () => {
+        Alert.alert(
+            "Desativar Conta",
+            "Sua conta ficará inativa. Você poderá reativá-la entrando em contato com o suporte. Deseja continuar?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Confirmar",
+                    onPress: async () => {
+                        const { data: { user: authUser } } = await supabase.auth.getUser();
+                        if (!authUser) return;
+
+                        const { error } = await supabase
+                            .from('profile')
+                            .update({ is_active: false })
+                            .eq('id', authUser.id);
+
+                        if (error) {
+                            Alert.alert("Erro", "Não foi possível desativar sua conta.");
+                        } else {
+                            handleLogout();
+                        }
+                    },
+                    style: "destructive"
+                }
+            ]
+        );
+    };
+
+    const handleDelete = async () => {
+        Alert.alert(
+            "Excluir Conta DEFINITIVAMENTE",
+            "Esta ação NÃO pode ser desfeita. Todos os seus dados serão apagados. Tem certeza?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "EXCLUIR TUDO",
+                    onPress: async () => {
+                        try {
+                            // 1. Pegamos a sessão atual de forma assíncrona
+                            const { data: { session } } = await supabase.auth.getSession();
+
+                            if (!session?.access_token) {
+                                console.error("DEBUG: Nenhuma sessão ativa encontrada.");
+                                Alert.alert("Erro", "Sessão expirada. Faça login novamente.");
+                                return;
+                            }
+
+                            // 2. Chamada da função com headers explícitos
+                            const { data, error } = await supabase.functions.invoke('delete-user', {
+                                headers: {
+                                    // É CRUCIAL que o 'Authorization' comece com 'Bearer '
+                                    'Authorization': `Bearer ${session.access_token}`
+                                }
+                            });
+
+                            if (error) {
+                                // Se cair aqui, a função retornou erro (provavelmente o 401)
+                                console.error("Erro retornado pela função:", error);
+                                Alert.alert("Erro", "A função de exclusão falhou. Verifique os logs no Supabase.");
+                            } else {
+                                Alert.alert("Sucesso", "Sua conta foi excluída.");
+                                handleLogout();
+                            }
+                        } catch (err) {
+                            console.error("Erro inesperado na chamada:", err);
+                        }
+                    },
+                    style: "destructive"
+                }
+            ]
+        );
+    };
+
+    const handleOptionsPress = () => {
+        Alert.alert(
+            "Gerenciar Conta",
+            "Escolha uma opção:",
+            [
+                { text: "Desativar Conta", onPress: handleDeactivate },
+                { text: "Excluir Conta DEFINITIVAMENTE", onPress: handleDelete, style: "destructive" },
+                { text: "Fechar", style: "cancel" }
+            ]
+        );
+    };
+
     const handleSaveProfile = async (updatedData: any) => {
         try {
             // 1. Limpeza de dados
@@ -66,7 +168,7 @@ export function ProfileScreen({ navigation }: any) {
                 return;
             }
             // Lógica sugerida: 14 caracteres = CNPJ, caso contrário CPF
-            const ehCnpj = documentoLimpo.length === 14;
+            const ehCnpj = documentoLimpo.length > 11;
 
             const { data: { user: authUser } } = await supabase.auth.getUser();
             if (!authUser) return;
@@ -143,8 +245,12 @@ export function ProfileScreen({ navigation }: any) {
 
         } catch (error: any) {
             console.error("Erro completo:", error);
-            alert("Erro ao salvar: " + error.message);
-            throw error; // Repassa o erro para o Modal parar o loading
+            if (error.code == "23505") {
+                alert("CPF ou CNPJ já cadastrado!");
+            } else {
+                alert("Erro ao salvar: ");
+            }
+            throw error; // Repassa o er    ro para o Modal parar o loading
         }
     };
     const StatCard = ({ label, value, subLabel }: any) => (
@@ -169,11 +275,11 @@ export function ProfileScreen({ navigation }: any) {
         <SafeAreaView style={styleProfile.container}>
             {/* Header com botões de ação */}
             <View style={styleProfile.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Icon name="chevron-left" size={32} color="#333" />
+                <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                    <Icon name="menu" size={32} color="#333" />
                 </TouchableOpacity>
                 <Text style={styleProfile.headerTitle}>PERFIL</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={handleOptionsPress}>
                     <Icon name="more-horiz" size={28} color="#333" />
                 </TouchableOpacity>
             </View>
@@ -227,7 +333,7 @@ export function ProfileScreen({ navigation }: any) {
                     Membro desde {user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Janeiro 2023'}
                 </Text>
 
-                <TouchableOpacity style={styleProfile.logoutButton} onPress={() => {/* sua lógica de logout aqui */ }}>
+                <TouchableOpacity style={styleProfile.logoutButton} onPress={handleLogout}>
                     <Icon name="logout" size={20} color="#E74C3C" />
                     <Text style={styleProfile.logoutText}>Sair da Conta</Text>
                 </TouchableOpacity>

@@ -2,7 +2,7 @@ import { EmptySyle } from "./style";
 import React from 'react';
 import { View, Text } from 'react-native';
 // Exemplo de uma função simples para renderizar o estado vazio
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 export const EmptyState = () => (
     <View style={EmptySyle.emptyContainer}>

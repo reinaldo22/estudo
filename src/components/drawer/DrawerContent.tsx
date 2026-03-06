@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { DrawerStyle } from './style';
@@ -97,7 +97,7 @@ export function DrawerContent(props: any) {
                         style={DrawerStyle.avatar}
                     />
                     <View style={DrawerStyle.headerTextContainer}>
-                        <Text style={DrawerStyle.userName} numberOfLines={1}>
+                        <Text style={DrawerStyle.userName}>
                             {user ? user.name : "Convidado"}
                         </Text>
                         <Text style={DrawerStyle.memberSince}>

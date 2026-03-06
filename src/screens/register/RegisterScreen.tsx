@@ -39,7 +39,7 @@ export function RegisterScreen() {
 
     async function handleSignUp() {
 
-        
+
         let currentErrors = {
             fullName: !fullName ? "O nome é obrigatório" : "",
             email: !email ? "O e-mail é obrigatório" : "",
@@ -47,7 +47,7 @@ export function RegisterScreen() {
             password: !password ? "A senha é obrigatória" : ""
         };
 
-       
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (email && !emailRegex.test(email)) {
             currentErrors.email = "Por favor, insira um e-mail válido";
@@ -83,7 +83,7 @@ export function RegisterScreen() {
             } else {
                 Alert.alert(
                     "Sucesso!",
-                    "Verifique seu e-mail para confirmar o cadastro.",
+                    "Usuário cadastrado com sucesso!",
                     [
                         {
                             text: "Ir para Login",
@@ -122,10 +122,10 @@ export function RegisterScreen() {
                     <View style={StyleRegister.container}>
                         {/* 1. Topo com Título e Seta */}
                         <View style={StyleRegister.header}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 style={StyleRegister.backButton} // Aplique o estilo aqui!
-                                >
+                            >
                                 <Ionicons
                                     name="chevron-back"
                                     size={26}

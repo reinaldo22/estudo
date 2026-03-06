@@ -3,7 +3,7 @@ import {
     Modal, View, Text, TouchableOpacity, TextInput,
     Image, ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { styleModal } from './style';
 import { maskDocument, maskPhone } from '@/utils/formatMask';
 import * as ImagePicker from 'expo-image-picker';
@@ -154,7 +154,7 @@ export function EditProfileModal({ visible, onClose, userData, onSave }: EditPro
                         </View>
 
                         {/* Substituímos o TouchableOpacity pelo seu componente PrimaryButton */}
-                        <PrimaryButton 
+                        <PrimaryButton
                             title="Salvar Alterações"
                             onPress={handlePressSave}
                             isLoading={isSaving}

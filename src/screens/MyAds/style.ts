@@ -1,0 +1,173 @@
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+export const styleMyAds = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        height: 80,
+        backgroundColor: '#FFF',
+    },
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+    },
+    addButton: {
+        width: 45,
+        height: 45,
+        borderRadius: 22.5,
+        backgroundColor: '#E8F5E9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#F1F3F2',
+        borderRadius: 25,
+        marginHorizontal: 20,
+        marginVertical: 15,
+        padding: 4,
+    },
+    toggleButton: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderRadius: 22,
+    },
+    toggleButtonActive: {
+        backgroundColor: '#FFF',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    toggleText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#7F8C8D',
+    },
+    toggleTextActive: {
+        color: '#2D6A4F',
+    },
+    loadingContainer: {
+        paddingHorizontal: 20,
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    listContent: {
+        paddingHorizontal: 20,
+        paddingBottom: 30,
+    },
+    adCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        marginBottom: 20,
+        padding: 15,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+    },
+    cardMainInfo: {
+        flexDirection: 'row',
+        marginBottom: 15,
+    },
+    adImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 15,
+        backgroundColor: '#EEE',
+    },
+    adDetails: {
+        flex: 1,
+        marginLeft: 15,
+        justifyContent: 'center',
+    },
+    adTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+        marginBottom: 8,
+    },
+    tagContainer: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    tagsWrapper: {
+        flexDirection: 'row',
+        marginBottom: 8,
+    },
+    boostedTag: {
+        backgroundColor: '#FFF3E0',
+        marginLeft: 40,
+    },
+    boostedTagText: {
+        color: '#E65100',
+    },
+    tagText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+    priceText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#2D6A4F',
+    },
+    freeText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#2D6A4F',
+    },
+    cardButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: '#F8F9FA',
+        paddingTop: 15,
+    },
+    actionButton: {
+        flex: 0.48,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F8F9FA',
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    actionButtonText: {
+        marginLeft: 8,
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#4A4A4A',
+    },
+    deleteButton: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+    },
+});

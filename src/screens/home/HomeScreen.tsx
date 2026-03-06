@@ -2,11 +2,11 @@ import { View, Text, FlatList, ScrollView, TouchableOpacity, TextInput, Activity
 import { styleHome } from "./styles";
 import { supabase } from "@/services/supabase";
 import { AdCard } from "@/components/cardAdd/AdCard";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
 import { EmptyState } from "@/components/EmptyStateComponent/EmptyState";
 
 // Interfaces mantidas conforme seu original
@@ -18,6 +18,8 @@ interface AnuncioProps {
     imagens: string[];
     estado: string;
     cidade: string;
+    impulsionado: boolean;
+    impulsionado_ate: string;
 }
 
 interface CategoriaProps {
@@ -37,13 +39,13 @@ export function HomeScreen({ navigation }: any) {
 
     // --- LÓGICA DE FILTRO ATUALIZADA ---
     // Como você usa filtrosExtra = (route.params as any)?.filtros, buscamos aqui:
-    const filtrosSalvos = params?.filtros; 
-    
+    const filtrosSalvos = params?.filtros;
+
     // O botão só ativa se houver algum valor dentro do objeto 'filtros'
     const temFiltroAtivo = !!(
-        filtrosSalvos?.precoMin || 
-        filtrosSalvos?.precoMax || 
-        filtrosSalvos?.tipo || 
+        filtrosSalvos?.precoMin ||
+        filtrosSalvos?.precoMax ||
+        filtrosSalvos?.tipo ||
         filtrosSalvos?.estado ||
         filtrosSalvos?.cidade
     );
@@ -75,6 +77,8 @@ export function HomeScreen({ navigation }: any) {
                     .from('anuncios')
                     .select('*')
                     .eq('status', 'ativo')
+                    .eq('impulsionado', true)
+                    .gt('impulsionado_ate', new Date().toISOString())
                     .order('created_at', { ascending: false })
                     .limit(5);
 
@@ -163,11 +167,13 @@ export function HomeScreen({ navigation }: any) {
         fetchRegioes();
     }, []);
 
-    useEffect(() => {
-        if (categoriaSelecionada) {
-            loadData(categoriaSelecionada, filtrosSalvos); // Usando filtrosSalvos aqui
-        }
-    }, [categoriaSelecionada, filtrosSalvos]);
+    useFocusEffect(
+        useCallback(() => {
+            loadData(categoriaSelecionada || 'tudo', filtrosSalvos);
+        }, [categoriaSelecionada, filtrosSalvos])
+    );
+
+
 
     return (
         <ScrollView style={styleHome.container} showsVerticalScrollIndicator={false}>
@@ -237,9 +243,12 @@ export function HomeScreen({ navigation }: any) {
                 }}
             />
 
-            {/* Listagens de Cards (Recentes e Recomendados) seguem seu padrão... */}
+            {/* Anúncios Impulsionados */}
             <View style={styleHome.sectionHeader}>
-                <Text style={styleHome.sectionTitle}>Anúncios Recentes</Text>
+                <Text style={styleHome.sectionTitle}>Anúncios Impulsionados</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('BoostedAds')}>
+                    <Text style={styleHome.viewAll}>Ver mais</Text>
+                </TouchableOpacity>
             </View>
 
             {loading ? (
@@ -254,6 +263,7 @@ export function HomeScreen({ navigation }: any) {
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => <AdCard item={item} isLarge={true} />}
                     showsHorizontalScrollIndicator={false}
+                    ListEmptyComponent={<EmptyState />}
                 />
             )}
 

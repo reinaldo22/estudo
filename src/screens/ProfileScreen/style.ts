@@ -25,7 +25,14 @@ export const styleProfile = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#FFF'
     },
-    userName: { fontSize: 24, fontWeight: 'bold', color: '#1A1A1A', marginTop: 15 },
+    userName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+        marginTop: 15,
+        textAlign: 'center',
+        paddingHorizontal: 20,
+    },
     locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
     locationText: { color: '#666', marginLeft: 4, fontSize: 14 },
     statsGrid: {
