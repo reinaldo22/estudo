@@ -34,7 +34,6 @@ export function LoginScreen() {
         }
 
         setErrors(currentErrors);
-
         // 2. Verificamos se existe algum erro antes de prosseguir
         const hasErrors = Object.values(currentErrors).some(error => error !== "");
         if (hasErrors) return;
@@ -52,6 +51,8 @@ export function LoginScreen() {
                 if (authError.message === 'Invalid login credentials') {
                     Alert.alert("Erro no Login", "E-mail ou senha incorretos. 🔑");
                 } else {
+                    console.log("------------" + authError);
+
                     Alert.alert("Erro", authError.message);
                 }
             } else {

@@ -17,13 +17,14 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/services/supabase';
 import { styleCreateAd } from './style';
+import { maskCurrency, unmaskCurrency } from '@/utils/formatMask';
 
 interface CategoryProps {
     id: string;
     nome: string;
 }
 
-export function CreateAdScreen({ navigation }: any) {
+export function CreateAdScreen({ navigation, route }: any) {
     const [images, setImages] = useState<string[]>([]);
     const [title, setTitle] = useState('');
     const [type, setType] = useState<'venda' | 'doação'>('venda');
@@ -37,11 +38,32 @@ export function CreateAdScreen({ navigation }: any) {
     const [cidade, setCidade] = useState('');
     const [loading, setLoading] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [isImpulsionado, setIsImpulsionado] = useState(false);
+
+    const adToEdit = route.params?.ad;
+    const isEditing = !!adToEdit;
 
     useEffect(() => {
         fetchCategorias();
-        fetchUserProfile();
+        if (isEditing) {
+            prefillData(adToEdit);
+        } else {
+            fetchUserProfile();
+        }
     }, []);
+
+    function prefillData(ad: any) {
+        setTitle(ad.titulo);
+        setType(ad.tipo);
+        setPrice(maskCurrency((ad.preco * 100).toString()));
+        setCategory(ad.categoria_id);
+        setDescription(ad.descricao || '');
+        setWeight(ad.peso ? ad.peso.toString() : '');
+        setUnidadeMedida(ad.unidade_medida || 'kg');
+        setEstado(ad.estado.toUpperCase());
+        setCidade(ad.cidade.charAt(0).toUpperCase() + ad.cidade.slice(1));
+        setImages(ad.imagens || []);
+    }
 
     async function fetchUserProfile() {
         try {
@@ -122,9 +144,44 @@ export function CreateAdScreen({ navigation }: any) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Usuário não autenticado');
 
-            // 1. Upload Images
-            const uploadedUrls: string[] = [];
+            // --- NOVO: Verificação de Limite de Anúncios Gratuitos ---
+            if (!isEditing && !isImpulsionado) {
+                const umaSemanaAtras = new Date();
+                umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+
+                const { count, error: countError } = await supabase
+                    .from('anuncios')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+                    .eq('impulsionado', false)
+                    .gte('created_at', umaSemanaAtras.toISOString());
+
+                if (countError) throw countError;
+
+                if (count !== null && count >= 3) {
+                    Alert.alert(
+                        'Limite de Anúncios atingido',
+                        'Você já atingiu o limite de 3 anúncios gratuitos por semana. Para publicar mais, você pode impulsionar este anúncio.',
+                        [
+                            { text: 'Entendi' },
+                            { text: 'Impulsionar agora', onPress: () => setIsImpulsionado(true) }
+                        ]
+                    );
+                    setLoading(false);
+                    return;
+                }
+            }
+            // -----------------------------------------------------------
+
+            // 1. Upload only NEW Images
+            const finalUrls: string[] = [];
             for (const uri of images) {
+                if (uri.startsWith('http')) {
+                    // Already uploaded
+                    finalUrls.push(uri);
+                    continue;
+                }
+
                 const fileExt = uri.split('.').pop();
                 const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
@@ -145,34 +202,68 @@ export function CreateAdScreen({ navigation }: any) {
                     .from('anuncios')
                     .getPublicUrl(fileName);
 
-                uploadedUrls.push(publicUrl);
+                finalUrls.push(publicUrl);
             }
 
-            // 2. Save Ad to Database
-            const { error } = await supabase.from('anuncios').insert({
-                user_id: user.id,
+            const adData: any = {
                 titulo: title,
                 tipo: type,
-                preco: type === 'venda' ? parseFloat(price.replace(',', '.')) : 0,
+                preco: type === 'venda' ? unmaskCurrency(price) : 0,
                 categoria_id: category,
                 descricao: description,
                 peso: parseFloat(weight),
                 unidade_medida: unidadeMedida,
                 estado: estado.trim().toLowerCase(),
                 cidade: cidade.trim().toLowerCase(),
-                imagens: uploadedUrls,
-                status: 'ativo',
-                created_at: new Date(),
-            });
+                imagens: finalUrls,
+            };
 
-            if (error) throw error;
+            // TODO: No futuro, integrar com gateway de pagamento (Stripe, In-App Purchase, etc.)
+            // Antes de salvar no banco, o fluxo de pagamento deve ser completado com sucesso.
+            if (isImpulsionado) {
+                const dataExpiracao = new Date();
+                dataExpiracao.setMonth(dataExpiracao.getMonth() + 1);
+                adData.impulsionado = true;
+                adData.impulsionado_ate = dataExpiracao.toISOString();
+            }
 
-            Alert.alert('Sucesso', 'Anúncio publicado com sucesso!', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+            // 2. Save or Update Ad
+            if (isEditing) {
+                const { error, data } = await supabase
+                    .from('anuncios')
+                    .update(adData)
+                    .eq('id', adToEdit.id)
+                    .eq('user_id', user.id)
+                    .select();
+
+                if (error) {
+                    throw error;
+                }
+
+                if (!data || data.length === 0) {
+                    throw new Error('Anúncio não encontrado ou sem permissão para editar.');
+                }
+            } else {
+                const { error } = await supabase
+                    .from('anuncios')
+                    .insert({
+                        ...adData,
+                        user_id: user.id,
+                        status: 'ativo',
+                        created_at: new Date(),
+                    });
+                console.log("------------" + error);
+                if (error) throw error;
+            }
+
+            Alert.alert(
+                'Sucesso',
+                isEditing ? 'Anúncio atualizado com sucesso!' : 'Anúncio publicado com sucesso!',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
         } catch (error: any) {
-            console.error('Erro ao publicar anúncio:', error);
-            Alert.alert('Erro', 'Não foi possível publicar o anúncio.');
+            console.error('Erro ao processar anúncio:', error);
+            Alert.alert('Erro', `Não foi possível ${isEditing ? 'atualizar' : 'publicar'} o anúncio.`);
         } finally {
             setLoading(false);
         }
@@ -188,7 +279,9 @@ export function CreateAdScreen({ navigation }: any) {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
                     </TouchableOpacity>
-                    <Text style={styleCreateAd.headerTitle}>Criar Anúncio</Text>
+                    <Text style={styleCreateAd.headerTitle}>
+                        {isEditing ? 'Editar Anúncio' : 'Criar Anúncio'}
+                    </Text>
                     <View style={{ width: 24 }} />
                 </View>
 
@@ -264,13 +357,12 @@ export function CreateAdScreen({ navigation }: any) {
                         <View style={styleCreateAd.inputGroup}>
                             <Text style={styleCreateAd.label}>PREÇO POR KG</Text>
                             <View style={styleCreateAd.priceInputContainer}>
-                                <Text style={styleCreateAd.currencyPrefix}>R$</Text>
                                 <TextInput
                                     style={styleCreateAd.priceInput}
-                                    placeholder="0,00"
+                                    placeholder="R$ 0,00"
                                     keyboardType="numeric"
                                     value={price}
-                                    onChangeText={setPrice}
+                                    onChangeText={(text) => setPrice(maskCurrency(text))}
                                 />
                             </View>
                         </View>
@@ -366,6 +458,22 @@ export function CreateAdScreen({ navigation }: any) {
                             />
                         </View>
                     </View>
+                    {/* Opção de Impulsionamento */}
+                    {!isEditing && (
+                        <TouchableOpacity
+                            style={styleCreateAd.boostToggleContainer}
+                            onPress={() => setIsImpulsionado(!isImpulsionado)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styleCreateAd.boostCheckbox, isImpulsionado && styleCreateAd.boostCheckboxActive]}>
+                                {isImpulsionado && <Ionicons name="checkmark" size={16} color="#FFF" />}
+                            </View>
+                            <View style={styleCreateAd.boostTextContainer}>
+                                <Text style={styleCreateAd.boostTitle}>Impulsionar anúncio (Destaque)</Text>
+                                <Text style={styleCreateAd.boostSubtitle}>Apareça na seção de anúncios impulsionados por 1 mês.</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Publish Button */}
                     <TouchableOpacity
@@ -376,7 +484,9 @@ export function CreateAdScreen({ navigation }: any) {
                         {loading ? (
                             <ActivityIndicator color="#FFF" />
                         ) : (
-                            <Text style={styleCreateAd.publishButtonText}>Publicar Anúncio</Text>
+                            <Text style={styleCreateAd.publishButtonText}>
+                                {isEditing ? 'Salvar Alterações' : 'Publicar Anúncio'}
+                            </Text>
                         )}
                     </TouchableOpacity>
                 </ScrollView>

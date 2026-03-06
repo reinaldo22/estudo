@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, DimensionValue } from 'react-native';
 
-export const AdCardSkeleton = ({ isLarge }: { isLarge?: boolean }) => {
+export const AdCardSkeleton = ({ isLarge, width }: { isLarge?: boolean, width?: DimensionValue }) => {
     const opacity = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
@@ -14,16 +14,19 @@ export const AdCardSkeleton = ({ isLarge }: { isLarge?: boolean }) => {
     }, []);
 
     return (
-        <View style={isLarge ? styles.cardLarge : styles.cardSmall}>
+        <View style={[
+            isLarge ? styles.cardLarge : styles.cardSmall,
+            width ? { width } : {}
+        ]}>
             {/* Espaço da Imagem */}
             <Animated.View style={[styles.imagePlaceholder, { opacity }]} />
-            
+
             <View style={styles.infoContainer}>
                 {/* Linha do Título */}
                 <Animated.View style={[styles.lineTitle, { opacity }]} />
                 {/* Linha do Preço */}
                 <Animated.View style={[styles.linePrice, { opacity }]} />
-                
+
                 {isLarge && (
                     <Animated.View style={[styles.lineLocation, { opacity }]} />
                 )}
@@ -34,7 +37,7 @@ export const AdCardSkeleton = ({ isLarge }: { isLarge?: boolean }) => {
 
 const styles = StyleSheet.create({
     cardSmall: { width: '48%', marginBottom: 15, borderRadius: 12, backgroundColor: '#FFF', overflow: 'hidden' },
-    cardLarge: { width: 280, marginRight: 15, borderRadius: 12, backgroundColor: '#FFF', overflow: 'hidden' },
+    cardLarge: { width: 280, marginRight: 15, marginBottom: 20, borderRadius: 12, backgroundColor: '#FFF', overflow: 'hidden' },
     imagePlaceholder: { width: '100%', height: 120, backgroundColor: '#E1E9EE' },
     infoContainer: { padding: 10 },
     lineTitle: { width: '80%', height: 12, backgroundColor: '#E1E9EE', borderRadius: 4, marginBottom: 8 },

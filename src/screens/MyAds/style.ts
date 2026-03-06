@@ -61,6 +61,7 @@ export const styleMyAds = StyleSheet.create({
     loadingContainer: {
         paddingHorizontal: 20,
         marginTop: 10,
+        alignItems: 'center',
     },
     listContent: {
         paddingHorizontal: 20,
@@ -103,7 +104,17 @@ export const styleMyAds = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 6,
+    },
+    tagsWrapper: {
+        flexDirection: 'row',
         marginBottom: 8,
+    },
+    boostedTag: {
+        backgroundColor: '#FFF3E0',
+        marginLeft: 40,
+    },
+    boostedTagText: {
+        color: '#E65100',
     },
     tagText: {
         fontSize: 10,
@@ -141,5 +152,22 @@ export const styleMyAds = StyleSheet.create({
         fontSize: 14,
         fontWeight: 'bold',
         color: '#4A4A4A',
+    },
+    deleteButton: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 10,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
     },
 });

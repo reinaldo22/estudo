@@ -261,4 +261,40 @@ export const styleCreateAd = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    boostToggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F9F4',
+        padding: 15,
+        borderRadius: 15,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#C8E6C9',
+    },
+    boostCheckbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#16B37B',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    boostCheckboxActive: {
+        backgroundColor: '#16B37B',
+    },
+    boostTextContainer: {
+        flex: 1,
+    },
+    boostTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+    },
+    boostSubtitle: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 2,
+    },
 });

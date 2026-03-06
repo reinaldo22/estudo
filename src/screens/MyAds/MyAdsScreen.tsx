@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '@/services/supabase';
 import { AdCard } from '@/components/cardAdd/AdCard';
 import { EmptyState } from '@/components/EmptyStateComponent/EmptyState';
@@ -17,6 +18,8 @@ interface AdProps {
     estado: string;
     cidade: string;
     status: string;
+    impulsionado: boolean;
+    impulsionado_ate: string;
 }
 
 export function MyAdsScreen({ navigation }: any) {
@@ -24,9 +27,11 @@ export function MyAdsScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'ativos' | 'finalizados'>('ativos');
 
-    useEffect(() => {
-        loadMyAds();
-    }, [activeTab]);
+    useFocusEffect(
+        useCallback(() => {
+            loadMyAds();
+        }, [activeTab])
+    );
 
     async function loadMyAds() {
         setLoading(true);
@@ -35,14 +40,23 @@ export function MyAdsScreen({ navigation }: any) {
             if (!user) return;
 
             // Mapeamos a aba para o status no banco
-            const statusFilter = activeTab === 'ativos' ? 'ativo' : 'vendido';
-
-            const { data, error } = await supabase
+            let query = supabase
                 .from('anuncios')
                 .select('*')
-                .eq('user_id', user.id)
-                .eq('status', statusFilter)
+                .eq('user_id', user.id);
+
+            if (activeTab === 'ativos') {
+                query = query.eq('status', 'ativo');
+            } else {
+                query = query.in('status', ['vendido', 'inativo']);
+            }
+
+            // Ordenação por Impulsionados primeiro, depois por mais recentes
+            query = query
+                .order('impulsionado', { ascending: false })
                 .order('created_at', { ascending: false });
+
+            const { data, error } = await query;
 
             if (error) throw error;
             if (data) setAds(data as AdProps[]);
@@ -53,50 +67,151 @@ export function MyAdsScreen({ navigation }: any) {
         }
     }
 
-    const renderAdItem = ({ item }: { item: AdProps }) => (
-        <View style={styleMyAds.adCard}>
-            <View style={styleMyAds.cardMainInfo}>
-                <Image
-                    source={{ uri: item.imagens?.[0] || 'https://via.placeholder.com/150' }}
-                    style={styleMyAds.adImage}
-                />
-                <View style={styleMyAds.adDetails}>
-                    <Text style={styleMyAds.adTitle} numberOfLines={2}>
-                        {item.titulo}
-                    </Text>
+    async function toggleStatus(id: string, currentStatus: string) {
+        try {
+            const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
+            const { error } = await supabase
+                .from('anuncios')
+                .update({ status: newStatus })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            // Remove localmente da aba atual para evitar refresh visual total
+            setAds(prev => prev.filter(ad => ad.id !== id));
+        } catch (error) {
+            console.error("Erro ao alterar status:", error);
+            Alert.alert("Erro", "Não foi possível alterar o status do anúncio.");
+        }
+    }
+
+    async function handleDeleteAd(item: AdProps) {
+        // Bloqueio de segurança: Anúncios impulsionados ativos não podem ser excluídos
+        if (item.impulsionado && item.impulsionado_ate) {
+            const agora = new Date();
+            const validade = new Date(item.impulsionado_ate);
+            if (validade > agora) {
+                Alert.alert(
+                    "Ação Bloqueada",
+                    "Anúncios impulsionados não podem ser excluídos enquanto estiverem em destaque. Você pode apenas pausá-los."
+                );
+                return;
+            }
+        }
+
+        Alert.alert(
+            "Excluir Anúncio",
+            "Deseja realmente excluir este anúncio permanentemente?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Excluir",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const { error } = await supabase
+                                .from('anuncios')
+                                .delete()
+                                .eq('id', item.id);
+
+                            if (error) throw error;
+
+                            // Remove localmente para evitar refresh visual total
+                            setAds(prev => prev.filter(ad => ad.id !== item.id));
+                        } catch (error) {
+                            console.error("Erro ao excluir anúncio:", error);
+                            Alert.alert("Erro", "Não foi possível excluir o anúncio.");
+                        }
+                    }
+                }
+            ]
+        );
+    }
+
+    const renderAdItem = ({ item }: { item: AdProps }) => {
+        const isBoostedActive = item.impulsionado && item.impulsionado_ate && new Date(item.impulsionado_ate) > new Date();
+
+        return (
+            <View style={styleMyAds.adCard}>
+                {item.status !== 'ativo' && !isBoostedActive && (
+                    <TouchableOpacity
+                        style={styleMyAds.deleteButton}
+                        onPress={() => handleDeleteAd(item)}
+                    >
+                        <Icon name="delete-outline" size={22} color="#D32F2F" />
+                    </TouchableOpacity>
+                )}
+                <View style={styleMyAds.cardMainInfo}>
+                    <Image
+                        source={{ uri: item.imagens?.[0] || 'https://via.placeholder.com/150' }}
+                        style={styleMyAds.adImage}
+                    />
                     <View style={[
-                        styleMyAds.tagContainer,
-                        { backgroundColor: item.tipo === 'venda' ? '#E8F5E9' : '#E3F2FD' }
+                        styleMyAds.adDetails,
+                        (item.status !== 'ativo' && !isBoostedActive) && { paddingRight: 40 }
                     ]}>
-                        <Text style={[
-                            styleMyAds.tagText,
-                            { color: item.tipo === 'venda' ? '#2D6A4F' : '#1976D2' }
-                        ]}>
-                            {item.tipo}
+                        <Text style={styleMyAds.adTitle} numberOfLines={2}>
+                            {item.titulo}
                         </Text>
+                        <View style={styleMyAds.tagsWrapper}>
+                            <View style={[
+                                styleMyAds.tagContainer,
+                                { backgroundColor: item.tipo === 'venda' ? '#E8F5E9' : '#E3F2FD' }
+                            ]}>
+                                <Text style={[
+                                    styleMyAds.tagText,
+                                    { color: item.tipo === 'venda' ? '#2D6A4F' : '#1976D2' }
+                                ]}>
+                                    {item.tipo}
+                                </Text>
+                            </View>
+
+                            {item.impulsionado && (
+                                <View style={[styleMyAds.tagContainer, styleMyAds.boostedTag]}>
+                                    <Text style={[styleMyAds.tagText, styleMyAds.boostedTagText]}>
+                                        Impulsionado
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                        {item.tipo === 'venda' ? (
+                            <Text style={styleMyAds.priceText}>
+                                R$ {item.preco.toFixed(2).replace('.', ',')}/kg
+                            </Text>
+                        ) : (
+                            <Text style={styleMyAds.freeText}>Grátis</Text>
+                        )}
                     </View>
-                    {item.tipo === 'venda' ? (
-                        <Text style={styleMyAds.priceText}>
-                            R$ {item.preco.toFixed(2).replace('.', ',')}/kg
+                </View>
+
+                <View style={styleMyAds.cardButtons}>
+                    <TouchableOpacity
+                        style={styleMyAds.actionButton}
+                        onPress={() => navigation.navigate('CreateAd', { ad: item })}
+                    >
+                        <Icon name="edit" size={18} color="#4A4A4A" />
+                        <Text style={styleMyAds.actionButtonText}>Editar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styleMyAds.actionButton}
+                        onPress={() => toggleStatus(item.id, item.status)}
+                    >
+                        <Icon
+                            name={item.status === 'ativo' ? "pause-circle-filled" : "play-circle-filled"}
+                            size={18}
+                            color={item.status === 'ativo' ? "#4A4A4A" : "#2D6A4F"}
+                        />
+                        <Text style={[
+                            styleMyAds.actionButtonText,
+                            item.status !== 'ativo' && { color: '#2D6A4F' }
+                        ]}>
+                            {item.status === 'ativo' ? 'Pausar' : 'Reativar'}
                         </Text>
-                    ) : (
-                        <Text style={styleMyAds.freeText}>Grátis</Text>
-                    )}
+                    </TouchableOpacity>
                 </View>
             </View>
-
-            <View style={styleMyAds.cardButtons}>
-                <TouchableOpacity style={styleMyAds.actionButton}>
-                    <Icon name="edit" size={18} color="#4A4A4A" />
-                    <Text style={styleMyAds.actionButtonText}>Editar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styleMyAds.actionButton}>
-                    <Icon name="pause-circle-filled" size={18} color="#4A4A4A" />
-                    <Text style={styleMyAds.actionButtonText}>Pausar</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <SafeAreaView style={styleMyAds.container}>
@@ -134,8 +249,8 @@ export function MyAdsScreen({ navigation }: any) {
 
             {loading ? (
                 <View style={styleMyAds.loadingContainer}>
-                    <AdCardSkeleton isLarge={true} />
-                    <AdCardSkeleton isLarge={true} />
+                    <AdCardSkeleton isLarge={true} width="100%" />
+                    <AdCardSkeleton isLarge={true} width="100%" />
                 </View>
             ) : (
                 <FlatList

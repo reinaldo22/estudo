@@ -16,6 +16,7 @@ import { AdDetail } from '@/screens/detailProductScreen/AdDetail';
 import { ProfileScreen } from '@/screens/ProfileScreen/ProfileScreen';
 import { MyAdsScreen } from '@/screens/MyAds/MyAdsScreen';
 import { CreateAdScreen } from '@/screens/CreateAd/CreateAdScreen';
+import { BoostedAdsScreen } from '@/screens/BoostedAds/BoostedAdsScreen';
 
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -153,6 +154,12 @@ export function Routes() {
             <Stack.Screen
                 name="CreateAd"
                 component={CreateAdScreen}
+                options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+                name="BoostedAds"
+                component={BoostedAdsScreen}
                 options={{ headerShown: false }}
             />
 

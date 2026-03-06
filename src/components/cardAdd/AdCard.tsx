@@ -13,6 +13,7 @@ interface AdCardProps {
         imagens: string[];
         estado: string;
         cidade: string;
+        impulsionado?: boolean;
     };
     isLarge?: boolean;
 }
@@ -55,6 +56,12 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
             </View>
 
             <View style={CardStyle.infoContainer}>
+                {item.impulsionado && (
+                    <View style={CardStyle.boostLabelWrapper}>
+                        <Icon name="bolt" size={10} color="#E65100" />
+                        <Text style={CardStyle.boostLabelAbove}>DESTAQUE</Text>
+                    </View>
+                )}
                 <Text numberOfLines={1} style={CardStyle.adTitle}>
                     {item.titulo}
                 </Text>
