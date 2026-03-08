@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { AdCard } from '@/components/cardAdd/AdCard';
 import { styleBoosted } from './styles';
+import { AuthModal } from '@/components/AuthModal/AuthModal';
 
 interface AnuncioProps {
     id: string;
@@ -19,6 +20,7 @@ interface AnuncioProps {
 export function BoostedAdsScreen({ navigation }: any) {
     const [ads, setAds] = useState<AnuncioProps[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     useEffect(() => {
         fetchBoostedAds();
@@ -44,6 +46,16 @@ export function BoostedAdsScreen({ navigation }: any) {
         }
     }
 
+    async function handleAdPress(adId: string) {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+            navigation.navigate('Detalhes', { adId });
+        } else {
+            setShowAuthModal(true);
+        }
+    }
+
     return (
         <SafeAreaView style={styleBoosted.container}>
             <View style={styleBoosted.header}>
@@ -64,7 +76,10 @@ export function BoostedAdsScreen({ navigation }: any) {
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <View style={styleBoosted.cardWrapper}>
-                            <AdCard item={item} />
+                            <AdCard
+                                item={item}
+                                onPress={() => handleAdPress(item.id)}
+                            />
                         </View>
                     )}
                     contentContainerStyle={styleBoosted.listContent}
@@ -77,6 +92,19 @@ export function BoostedAdsScreen({ navigation }: any) {
                     }
                 />
             )}
+
+            <AuthModal
+                isVisible={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onLogin={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Login');
+                }}
+                onRegister={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Register');
+                }}
+            />
         </SafeAreaView>
     );
 }

@@ -65,7 +65,7 @@ export function ProfileScreen({ navigation }: any) {
             navigation.dispatch(
                 CommonActions.reset({
                     index: 0,
-                    routes: [{ name: 'Login' }], // Certifique-se que o nome da rota está correto
+                    routes: [{ name: 'Drawer' }], // Redirecionando para a Home (Drawer)
                 })
             );
         }

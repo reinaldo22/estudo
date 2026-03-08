@@ -8,6 +8,7 @@ import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
 import { EmptyState } from "@/components/EmptyStateComponent/EmptyState";
+import { AuthModal } from "@/components/AuthModal/AuthModal";
 
 // Interfaces mantidas conforme seu original
 interface AnuncioProps {
@@ -37,11 +38,8 @@ export function HomeScreen({ navigation }: any) {
     const route = useRoute();
     const params = route.params as any;
 
-    // --- LÓGICA DE FILTRO ATUALIZADA ---
-    // Como você usa filtrosExtra = (route.params as any)?.filtros, buscamos aqui:
     const filtrosSalvos = params?.filtros;
 
-    // O botão só ativa se houver algum valor dentro do objeto 'filtros'
     const temFiltroAtivo = !!(
         filtrosSalvos?.precoMin ||
         filtrosSalvos?.precoMax ||
@@ -61,6 +59,23 @@ export function HomeScreen({ navigation }: any) {
     const [carregandoMais, setCarregandoMais] = useState(false);
     const [temMais, setTemMais] = useState(true);
     const ITENS_POR_PAGINA = 4;
+
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        // Verifica o estado inicial
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsLoggedIn(!!session);
+        });
+
+        // Ouve mudanças na autenticação
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsLoggedIn(!!session);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
 
     // Funções de carregamento mantidas
     async function loadData(categoriaId?: string, filtrosExtra?: any, isMore = false) {
@@ -173,19 +188,36 @@ export function HomeScreen({ navigation }: any) {
         }, [categoriaSelecionada, filtrosSalvos])
     );
 
-
+    async function handleAdPress(adId: string) {
+        if (isLoggedIn) {
+            navigation.navigate('Detalhes', { adId });
+        } else {
+            setShowAuthModal(true);
+        }
+    }
 
     return (
         <ScrollView style={styleHome.container} showsVerticalScrollIndicator={false}>
             {/* 1. Header */}
             <View style={styleHome.header}>
-                <TouchableOpacity onPress={() => navigation.openDrawer()}>
-                    <Icon name="menu" size={28} color="#000" />
-                </TouchableOpacity>
-                <Text style={styleHome.logo}>EcoMarket</Text>
-                <TouchableOpacity>
-                    <Icon name="notifications-none" size={28} color="#000" />
-                </TouchableOpacity>
+                {isLoggedIn ? (
+                    <>
+                        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                            <Icon name="menu" size={28} color="#000" />
+                        </TouchableOpacity>
+                        <Text style={styleHome.logo}>EcoMarket</Text>
+                        <TouchableOpacity>
+                            <Icon name="notifications-none" size={28} color="#000" />
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        {/* Botão de menu escondido quando deslogado */}
+                        <View style={{ width: 28 }} />
+                        <Text style={styleHome.logo}>EcoMarket</Text>
+                        <View style={{ width: 28 }} />
+                    </>
+                )}
             </View>
 
             {/* 2. Barra de Busca e Filtro Atualizada */}
@@ -204,17 +236,17 @@ export function HomeScreen({ navigation }: any) {
                 <TouchableOpacity
                     style={[
                         styleHome.filterButton,
-                        temFiltroAtivo && styleHome.filterButtonActive // Muda a cor no seu style.ts
+                        temFiltroAtivo && styleHome.filterButtonActive
                     ]}
                     onPress={() => navigation.navigate('FilterScreen', {
                         regioes: listaRegioes,
-                        filtrosAtuais: filtrosSalvos // Envia os filtros para a tela de filtro "lembrar"
+                        filtrosAtuais: filtrosSalvos
                     })}
                 >
                     <Icon
                         name="tune"
                         size={24}
-                        color={temFiltroAtivo ? "#FFF" : "#2D6A4F"} // Muda a cor do ícone
+                        color={temFiltroAtivo ? "#FFF" : "#2D6A4F"}
                     />
                     {temFiltroAtivo && <View style={styleHome.filterBadge} />}
                 </TouchableOpacity>
@@ -261,7 +293,13 @@ export function HomeScreen({ navigation }: any) {
                     horizontal
                     data={recentes}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <AdCard item={item} isLarge={true} />}
+                    renderItem={({ item }) => (
+                        <AdCard
+                            item={item}
+                            isLarge={true}
+                            onPress={() => handleAdPress(item.id)}
+                        />
+                    )}
                     showsHorizontalScrollIndicator={false}
                     ListEmptyComponent={<EmptyState />}
                 />
@@ -278,7 +316,12 @@ export function HomeScreen({ navigation }: any) {
                     </>
                 ) : recomendados.length > 0 ? (
                     recomendados.map((item) => (
-                        <AdCard key={item.id} item={item} isLarge={false} />
+                        <AdCard
+                            key={item.id}
+                            item={item}
+                            isLarge={false}
+                            onPress={() => handleAdPress(item.id)}
+                        />
                     ))
                 ) : (
                     <EmptyState />
@@ -296,6 +339,19 @@ export function HomeScreen({ navigation }: any) {
             )}
 
             <View style={{ height: 40 }} />
+
+            <AuthModal
+                isVisible={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onLogin={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Login');
+                }}
+                onRegister={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Register');
+                }}
+            />
         </ScrollView>
     );
 }

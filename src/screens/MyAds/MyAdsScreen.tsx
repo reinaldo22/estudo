@@ -46,7 +46,7 @@ export function MyAdsScreen({ navigation }: any) {
                 .eq('user_id', user.id);
 
             if (activeTab === 'ativos') {
-                query = query.eq('status', 'ativo');
+                query = query.in('status', ['ativo', 'desativado']);
             } else {
                 query = query.in('status', ['vendido', 'inativo']);
             }
@@ -173,6 +173,14 @@ export function MyAdsScreen({ navigation }: any) {
                                     </Text>
                                 </View>
                             )}
+
+                            {item.status === 'desativado' && (
+                                <View style={[styleMyAds.tagContainer, { backgroundColor: '#FFF4E5' }]}>
+                                    <Text style={[styleMyAds.tagText, { color: '#B7791F' }]}>
+                                        Aguardando Pagamento
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                         {item.tipo === 'venda' ? (
                             <Text style={styleMyAds.priceText}>
@@ -192,6 +200,17 @@ export function MyAdsScreen({ navigation }: any) {
                         <Icon name="edit" size={18} color="#4A4A4A" />
                         <Text style={styleMyAds.actionButtonText}>Editar</Text>
                     </TouchableOpacity>
+
+                    {!isBoostedActive && (
+                        <TouchableOpacity
+                            style={[styleMyAds.actionButton, { backgroundColor: '#FDF2E9', borderColor: '#E65100' }]}
+                            onPress={() => navigation.navigate('BoostAd', { adData: item })}
+                        >
+                            <Icon name="bolt" size={18} color="#E65100" />
+                            <Text style={[styleMyAds.actionButtonText, { color: '#E65100' }]}>Impulsionar</Text>
+                        </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity
                         style={styleMyAds.actionButton}
                         onPress={() => toggleStatus(item.id, item.status)}

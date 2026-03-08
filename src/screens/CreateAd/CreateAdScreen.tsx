@@ -39,6 +39,8 @@ export function CreateAdScreen({ navigation, route }: any) {
     const [loading, setLoading] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isImpulsionado, setIsImpulsionado] = useState(false);
+    const [planId, setPlanId] = useState<string | null>(null);
+    const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
     const adToEdit = route.params?.ad;
     const isEditing = !!adToEdit;
@@ -51,6 +53,19 @@ export function CreateAdScreen({ navigation, route }: any) {
             fetchUserProfile();
         }
     }, []);
+
+    useEffect(() => {
+        if (route.params?.isBoosted) {
+            setIsImpulsionado(true);
+        }
+        if (route.params?.paymentConfirmed) {
+            setPaymentConfirmed(true);
+            setIsImpulsionado(true);
+        }
+        if (route.params?.planId) {
+            setPlanId(route.params.planId);
+        }
+    }, [route.params?.isBoosted, route.params?.paymentConfirmed, route.params?.planId]);
 
     function prefillData(ad: any) {
         setTitle(ad.titulo);
@@ -221,39 +236,78 @@ export function CreateAdScreen({ navigation, route }: any) {
             // TODO: No futuro, integrar com gateway de pagamento (Stripe, In-App Purchase, etc.)
             // Antes de salvar no banco, o fluxo de pagamento deve ser completado com sucesso.
             if (isImpulsionado) {
-                const dataExpiracao = new Date();
-                dataExpiracao.setMonth(dataExpiracao.getMonth() + 1);
                 adData.impulsionado = true;
-                adData.impulsionado_ate = dataExpiracao.toISOString();
+                if (planId) {
+                    adData.plan_id = planId;
+                }
             }
 
+            let insertedAdId: string | null = null;
+
             // 2. Save or Update Ad
+            let adObjectForNavigation: any = null;
+
             if (isEditing) {
-                const { error, data } = await supabase
+                const { error: updateError, data: updateData } = await supabase
                     .from('anuncios')
                     .update(adData)
                     .eq('id', adToEdit.id)
                     .eq('user_id', user.id)
                     .select();
 
-                if (error) {
-                    throw error;
+                if (updateError) {
+                    throw updateError;
                 }
 
-                if (!data || data.length === 0) {
+                if (!updateData || updateData.length === 0) {
                     throw new Error('Anúncio não encontrado ou sem permissão para editar.');
                 }
+
+                adObjectForNavigation = { ...adData, id: adToEdit.id };
             } else {
-                const { error } = await supabase
+                const { data: insertData, error: insertError } = await supabase
                     .from('anuncios')
                     .insert({
                         ...adData,
                         user_id: user.id,
-                        status: 'ativo',
+                        status: isImpulsionado ? 'desativado' : 'ativo',
                         created_at: new Date(),
-                    });
-                console.log("------------" + error);
-                if (error) throw error;
+                    })
+                    .select('id, titulo, preco, imagens, cidade, estado')
+                    .single();
+
+                if (insertError) throw insertError;
+                if (insertData) {
+                    insertedAdId = insertData.id;
+                    // Mapeamos para o formato que a BoostAd espera (que agora suporta ambos, mas vamos garantir o ID)
+                    adObjectForNavigation = {
+                        ...insertData,
+                        id: insertData.id
+                    };
+                }
+            }
+
+            // Se o usuário marcou para impulsionar, navegamos para a tela de BoostAd com o ID recém criado
+            if (isImpulsionado && !paymentConfirmed) {
+                Alert.alert(
+                    'Quase lá!',
+                    'Seu anúncio foi publicado. Agora complete o pagamento para impulsioná-lo.',
+                    [
+                        {
+                            text: 'Pagar Agora',
+                            onPress: () => navigation.navigate('BoostAd', { adData: adObjectForNavigation })
+                        }
+                    ]
+                );
+                return;
+            }
+
+            // Se o pagamento JÁ foi confirmado (fluxo alternativo se existir), chama a função
+            if (paymentConfirmed && (insertedAdId || adToEdit?.id)) {
+                const idToBoost = isEditing ? adToEdit.id : insertedAdId;
+                await supabase.functions.invoke('boost-ad', {
+                    body: { ad_id: idToBoost, plan_id: planId }
+                });
             }
 
             Alert.alert(
@@ -462,7 +516,27 @@ export function CreateAdScreen({ navigation, route }: any) {
                     {!isEditing && (
                         <TouchableOpacity
                             style={styleCreateAd.boostToggleContainer}
-                            onPress={() => setIsImpulsionado(!isImpulsionado)}
+                            onPress={() => {
+                                if (!isImpulsionado) {
+                                    const missingFields: string[] = [];
+                                    if (images.length === 0) missingFields.push('Fotos');
+                                    if (!title) missingFields.push('Título');
+                                    if (!category) missingFields.push('Categoria');
+                                    if (type === 'venda' && !price) missingFields.push('Preço');
+                                    if (!weight) missingFields.push('Peso');
+                                    if (!cidade) missingFields.push('Cidade');
+                                    if (!estado) missingFields.push('Estado');
+
+                                    if (missingFields.length > 0) {
+                                        Alert.alert(
+                                            'Anúncio Incompleto',
+                                            `Para impulsionar, preencha primeiro: ${missingFields.join(', ')}.`
+                                        );
+                                        return;
+                                    }
+                                }
+                                setIsImpulsionado(!isImpulsionado);
+                            }}
                             activeOpacity={0.7}
                         >
                             <View style={[styleCreateAd.boostCheckbox, isImpulsionado && styleCreateAd.boostCheckboxActive]}>
@@ -470,8 +544,13 @@ export function CreateAdScreen({ navigation, route }: any) {
                             </View>
                             <View style={styleCreateAd.boostTextContainer}>
                                 <Text style={styleCreateAd.boostTitle}>Impulsionar anúncio (Destaque)</Text>
-                                <Text style={styleCreateAd.boostSubtitle}>Apareça na seção de anúncios impulsionados por 1 mês.</Text>
+                                <Text style={styleCreateAd.boostSubtitle}>
+                                    {isImpulsionado
+                                        ? 'Anúncio será impulsionado após a publicação!'
+                                        : 'Apareça na seção de anúncios impulsionados por até 15 dias.'}
+                                </Text>
                             </View>
+                            <Ionicons name="chevron-forward" size={20} color="#666" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                     )}
 

@@ -76,4 +76,25 @@ export const DrawerStyle = StyleSheet.create({
         color: '#E74C3C', // Vermelho do design
         marginLeft: 20,
     },
+    centeredContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loginButtonCentered: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E8F5E9',
+        paddingVertical: 15,
+        paddingHorizontal: 30,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: '#2D6A4F',
+    },
+    loginTextCentered: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#2D6A4F',
+        marginLeft: 10,
+    },
 });
