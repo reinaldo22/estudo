@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
+import ProfileService from '@/services/ProfileService';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { DrawerStyle } from './style';
 
@@ -19,15 +20,11 @@ export function DrawerContent(props: any) {
                 const { data: { user: sessionUser } } = await supabase.auth.getUser();
 
                 if (sessionUser && isMounted) {
-                    const { data: profileData } = await supabase
-                        .from('profile')
-                        .select('full_name, avatar_url, updated_at')
-                        .eq('id', sessionUser.id)
-                        .single();
+                    const profileData = await ProfileService.getCurrentProfile();
 
                     if (profileData) {
                         setUser({
-                            name: sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || "Usuário",
+                            name: profileData.full_name || sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || "Usuário",
                             email: sessionUser.email || "",
                             avatar: profileData.avatar_url || "https://via.placeholder.com/150",
                             date: profileData.updated_at

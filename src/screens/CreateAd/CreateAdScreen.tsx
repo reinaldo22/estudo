@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/services/supabase';
+import AnunciosService, { AdDataPayload } from '@/services/AnunciosService';
+import CategoriasService from '@/services/CategoriasService';
 import { styleCreateAd } from './style';
 import { maskCurrency, unmaskCurrency } from '@/utils/formatMask';
 
@@ -84,11 +86,7 @@ export function CreateAdScreen({ navigation, route }: any) {
         try {
             const { data: { user: authUser } } = await supabase.auth.getUser();
             if (authUser) {
-                const { data, error } = await supabase
-                    .from('profile')
-                    .select('endereco')
-                    .eq('id', authUser.id)
-                    .single();
+                const data = await AnunciosService.getUserProfileLocation(authUser.id);
 
                 if (data?.endereco) {
                     const parts = data.endereco.split('-');
@@ -113,13 +111,8 @@ export function CreateAdScreen({ navigation, route }: any) {
                 setCategories(JSON.parse(cachedCats));
                 return;
             }
-            const { data, error } = await supabase
-                .from('categorias')
-                .select('id, nome')
-                .eq('ativo', true)
-                .order('nome', { ascending: true });
+            const data = await CategoriasService.getCategorias();
 
-            if (error) throw error;
             if (data) {
                 setCategories(data);
                 await AsyncStorage.setItem('@categorias_cache', JSON.stringify(data));
@@ -161,19 +154,9 @@ export function CreateAdScreen({ navigation, route }: any) {
 
             // --- NOVO: Verificação de Limite de Anúncios Gratuitos ---
             if (!isEditing && !isImpulsionado) {
-                const umaSemanaAtras = new Date();
-                umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+                const count = await AnunciosService.checkFreeAdsLimit(user.id);
 
-                const { count, error: countError } = await supabase
-                    .from('anuncios')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
-                    .eq('impulsionado', false)
-                    .gte('created_at', umaSemanaAtras.toISOString());
-
-                if (countError) throw countError;
-
-                if (count !== null && count >= 3) {
+                if (count >= 3) {
                     Alert.alert(
                         'Limite de Anúncios atingido',
                         'Você já atingiu o limite de 3 anúncios gratuitos por semana. Para publicar mais, você pode impulsionar este anúncio.',
@@ -189,41 +172,12 @@ export function CreateAdScreen({ navigation, route }: any) {
             // -----------------------------------------------------------
 
             // 1. Upload only NEW Images
-            const finalUrls: string[] = [];
-            for (const uri of images) {
-                if (uri.startsWith('http')) {
-                    // Already uploaded
-                    finalUrls.push(uri);
-                    continue;
-                }
+            const finalUrls = await AnunciosService.uploadImages(user.id, images);
 
-                const fileExt = uri.split('.').pop();
-                const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-                const formData = new FormData();
-                formData.append('file', {
-                    uri,
-                    name: fileName,
-                    type: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-                } as any);
-
-                const { error: uploadError } = await supabase.storage
-                    .from('anuncios')
-                    .upload(fileName, formData);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('anuncios')
-                    .getPublicUrl(fileName);
-
-                finalUrls.push(publicUrl);
-            }
-
-            const adData: any = {
+            const adData: AdDataPayload = {
                 titulo: title,
                 tipo: type,
-                preco: type === 'venda' ? unmaskCurrency(price) : 0,
+                preco: type === 'venda' ? (unmaskCurrency(price) ?? 0) : 0,
                 categoria_id: category,
                 descricao: description,
                 peso: parseFloat(weight),
@@ -248,35 +202,11 @@ export function CreateAdScreen({ navigation, route }: any) {
             let adObjectForNavigation: any = null;
 
             if (isEditing) {
-                const { error: updateError, data: updateData } = await supabase
-                    .from('anuncios')
-                    .update(adData)
-                    .eq('id', adToEdit.id)
-                    .eq('user_id', user.id)
-                    .select();
-
-                if (updateError) {
-                    throw updateError;
-                }
-
-                if (!updateData || updateData.length === 0) {
-                    throw new Error('Anúncio não encontrado ou sem permissão para editar.');
-                }
-
+                const updateData = await AnunciosService.updateAd(user.id, adToEdit.id, adData);
                 adObjectForNavigation = { ...adData, id: adToEdit.id };
             } else {
-                const { data: insertData, error: insertError } = await supabase
-                    .from('anuncios')
-                    .insert({
-                        ...adData,
-                        user_id: user.id,
-                        status: isImpulsionado ? 'desativado' : 'ativo',
-                        created_at: new Date(),
-                    })
-                    .select('id, titulo, preco, imagens, cidade, estado')
-                    .single();
+                const insertData = await AnunciosService.createAd(user.id, adData);
 
-                if (insertError) throw insertError;
                 if (insertData) {
                     insertedAdId = insertData.id;
                     // Mapeamos para o formato que a BoostAd espera (que agora suporta ambos, mas vamos garantir o ID)
@@ -305,9 +235,7 @@ export function CreateAdScreen({ navigation, route }: any) {
             // Se o pagamento JÁ foi confirmado (fluxo alternativo se existir), chama a função
             if (paymentConfirmed && (insertedAdId || adToEdit?.id)) {
                 const idToBoost = isEditing ? adToEdit.id : insertedAdId;
-                await supabase.functions.invoke('boost-ad', {
-                    body: { ad_id: idToBoost, plan_id: planId }
-                });
+                await AnunciosService.invokeBoostFunction(idToBoost, planId);
             }
 
             Alert.alert(
@@ -513,7 +441,7 @@ export function CreateAdScreen({ navigation, route }: any) {
                         </View>
                     </View>
                     {/* Opção de Impulsionamento */}
-                    {!isEditing && (
+                    {!isEditing && type === 'venda' && (
                         <TouchableOpacity
                             style={styleCreateAd.boostToggleContainer}
                             onPress={() => {

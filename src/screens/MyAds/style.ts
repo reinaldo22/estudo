@@ -107,11 +107,12 @@ export const styleMyAds = StyleSheet.create({
     },
     tagsWrapper: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
         marginBottom: 8,
     },
     boostedTag: {
         backgroundColor: '#FFF3E0',
-        marginLeft: 40,
     },
     boostedTagText: {
         color: '#E65100',
@@ -137,21 +138,33 @@ export const styleMyAds = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#F8F9FA',
         paddingTop: 15,
+        marginHorizontal: -4, // Compensates for the button margins
     },
     actionButton: {
-        flex: 0.48,
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F8F9FA',
         paddingVertical: 10,
         borderRadius: 12,
+        marginHorizontal: 4,
+        position: 'relative',
+    },
+    actionButtonIcon: {
+        position: 'absolute',
+        left: 10,
+    },
+    actionButtonIconBoost: {
+        position: 'absolute',
+        left: 2,
     },
     actionButtonText: {
-        marginLeft: 8,
-        fontSize: 14,
+        fontSize: 13,
+        padding: 3,
         fontWeight: 'bold',
         color: '#4A4A4A',
+        textAlign: 'center',
     },
     deleteButton: {
         position: 'absolute',

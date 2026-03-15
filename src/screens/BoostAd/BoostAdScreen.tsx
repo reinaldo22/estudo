@@ -12,17 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { styles } from './styles';
-import { supabase } from '@/services/supabase';
-
-interface Plan {
-    id: string;
-    title: string;
-    description: string;
-    price: number;
-    priceLabel: string;
-    bestValue: boolean;
-    durationDays: number;
-}
+import ImpulsionamentosService, { BoostPlan } from '@/services/ImpulsionamentosService';
 
 interface BoostAdScreenProps {
     navigation: any;
@@ -32,7 +22,7 @@ interface BoostAdScreenProps {
 export function BoostAdScreen({ navigation, route }: BoostAdScreenProps) {
     const { adData } = route.params || {};
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-    const [plans, setPlans] = useState<Plan[]>([]);
+    const [plans, setPlans] = useState<BoostPlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -42,25 +32,9 @@ export function BoostAdScreen({ navigation, route }: BoostAdScreenProps) {
     const fetchPlans = async () => {
         try {
             setIsLoading(true);
-            const { data, error } = await supabase
-                .from('boost_plans')
-                .select('*')
-                .order('price', { ascending: true });
+            const mappedPlans = await ImpulsionamentosService.getBoostPlans();
 
-            if (error) throw error;
-
-            if (data) {
-                // Map snake_case from DB to camelCase for the component
-                const mappedPlans = data.map((item: any) => ({
-                    id: item.id,
-                    title: item.title,
-                    description: item.description,
-                    price: item.price,
-                    priceLabel: item.price_label,
-                    bestValue: item.best_value,
-                    durationDays: item.duration_days
-                }));
-
+            if (mappedPlans.length > 0) {
                 setPlans(mappedPlans);
 
                 // Select the first plan by default or the one that is best value

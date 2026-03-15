@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
+import AnunciosService from '@/services/AnunciosService';
 import { AdCard } from '@/components/cardAdd/AdCard';
 import { styleBoosted } from './styles';
 import { AuthModal } from '@/components/AuthModal/AuthModal';
@@ -29,15 +30,8 @@ export function BoostedAdsScreen({ navigation }: any) {
     async function fetchBoostedAds() {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('anuncios')
-                .select('*')
-                .eq('status', 'ativo')
-                .eq('impulsionado', true)
-                .gt('impulsionado_ate', new Date().toISOString())
-                .order('created_at', { ascending: false });
+            const data = await AnunciosService.getBoostedAds();
 
-            if (error) throw error;
             if (data) setAds(data as AnuncioProps[]);
         } catch (error) {
             console.error("Erro ao carregar anúncios impulsionados:", error);

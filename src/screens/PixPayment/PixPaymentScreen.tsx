@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { styles } from './styles';
-import { supabase } from '@/services/supabase';
+import PaymentsService from '@/services/PaymentsService';
 
 interface PixPaymentScreenProps {
     navigation: any;
@@ -83,36 +83,22 @@ export function PixPaymentScreen({ navigation, route }: PixPaymentScreenProps) {
                 }
             }, 10000);
 
-            subscription = supabase
-                .channel('payment_status')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'payments',
-                        filter: `external_id=eq.${paymentId}`
-                    },
-                    (payload) => {
-                        console.log('Mudança de status detectada:', payload.new.status);
-                        const status = payload.new.status;
-
-                        if (status === 'CONFIRMED' || status === 'RECEIVED') {
-                            if (timeout) clearTimeout(timeout);
-                            handlePaymentSuccess();
-                        } else if (status === 'OVERDUE' || status === 'REFUNDED' || status === 'CANCELLED') {
-                            if (timeout) clearTimeout(timeout);
-                            setIsProcessing(false);
-                            setPaymentError(status === 'OVERDUE' ? 'Tempo de expiração excedido' : 'O pagamento foi cancelado ou estornado');
-                        }
-                    }
-                )
-                .subscribe();
+            subscription = PaymentsService.subscribeToPaymentStatus(paymentId, (status) => {
+                console.log('Mudança de status detectada:', status);
+                if (status === 'CONFIRMED' || status === 'RECEIVED') {
+                    if (timeout) clearTimeout(timeout);
+                    handlePaymentSuccess();
+                } else if (status === 'OVERDUE' || status === 'REFUNDED' || status === 'CANCELLED') {
+                    if (timeout) clearTimeout(timeout);
+                    setIsProcessing(false);
+                    setPaymentError(status === 'OVERDUE' ? 'Tempo de expiração excedido' : 'O pagamento foi cancelado ou estornado');
+                }
+            });
         }
 
         return () => {
             if (subscription) {
-                supabase.removeChannel(subscription);
+                PaymentsService.unsubscribeFromPaymentStatus(subscription);
             }
             if (timeout) clearTimeout(timeout);
         };
@@ -137,22 +123,15 @@ export function PixPaymentScreen({ navigation, route }: PixPaymentScreenProps) {
                 throw new Error("Não foi possível identificar o anúncio ou o plano selecionado. Volte e tente novamente.");
             }
 
-            const { data, error } = await supabase.functions.invoke('asaas-checkout', {
-                body: {
-                    ad_id: adId,
-                    plan_id: planId
-                }
-            });
-
-            if (error) throw error;
+            const data = await PaymentsService.generatePixPayment(adId, planId);
 
             if (data.success) {
                 setPixCode(data.pixCode);
                 setQrCodeBase64(data.encodedImage);
                 setPaymentId(data.paymentId);
             } else {
-                console.error('[PixPaymentScreen] Erro retornado pela função:', data);
-                throw new Error(data.error || "Erro ao gerar PIX");
+                console.error('[PixPaymentScreen] Erro retornado pela API via PixService:', data);
+                throw new Error("Erro ao gerar PIX");
             }
         } catch (error: any) {
             console.error('[PixPaymentScreen] Erro ao gerar PIX:', error);
