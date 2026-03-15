@@ -2,14 +2,33 @@
     "build": {
         "development": {
             "developmentClient": true,
-            "distribution": "internal"
+            "distribution": "internal",
+            "env": {
+                "APP_VARIANT": "development"
+            }
+        },
+        "homolog": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "APP_VARIANT": "homolog"
+            }
         },
         "preview": {
             "android": {
                 "buildType": "apk"
+            },
+            "env": {
+                "APP_VARIANT": "homolog"
             }
         },
-        "production": {}
+        "production": {
+            "env": {
+                "APP_VARIANT": "production"
+            }
+        }
     },
     "submit": {
         "production": {}
