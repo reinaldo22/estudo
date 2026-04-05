@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { styleProfile } from './style';
 import { supabase } from '@/services/supabase';
+import ProfileService from '@/services/ProfileService';
 import { CommonActions } from '@react-navigation/native';
 import { EditProfileModal } from './EditProfileModal/EditProfileModal';
 
@@ -18,41 +19,12 @@ export function ProfileScreen({ navigation }: any) {
     }, []);
 
     async function loadProfile() {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser) {
-            const { data, error } = await supabase
-                .from('profile') // Verifique se o nome é 'profile' ou 'profiles'
-                .select(`
-                *,
-                anuncios (
-                    peso,
-                    status
-                )
-            `)
-                .eq('id', authUser.id)
-                .eq('anuncios.status', 'ativo')
-                .single();
-
-            if (error) {
-                console.error("Erro na busca:", error.message);
-                return;
-            }
-
-            if (data) {
-                // 1. Quantidade de anúncios (tamanho do array de anúncios que voltaram)
-                const contagem = data.anuncios?.length || 0;
-                setQtdAnuncios(contagem);
-
-                // 2. Cálculo do Impacto Total (soma dos pesos)
-                const somaPeso = data.anuncios?.reduce((acc: number, curr: any) => {
-                    return acc + (Number(curr.peso) || 0);
-                }, 0);
-
-                setImpactoTotal(somaPeso);
-
-                // 3. Atualiza o usuário
-                setUser(data);
-            }
+        const statsData = await ProfileService.getProfileWithStats();
+        if (statsData) {
+            setQtdAnuncios(statsData.anuncios?.length || 0);
+            const somaPeso = statsData.anuncios?.reduce((acc: number, curr: any) => acc + (Number(curr.peso) || 0), 0);
+            setImpactoTotal(somaPeso);
+            setUser(statsData);
         }
     }
 
@@ -65,7 +37,7 @@ export function ProfileScreen({ navigation }: any) {
             navigation.dispatch(
                 CommonActions.reset({
                     index: 0,
-                    routes: [{ name: 'Login' }], // Certifique-se que o nome da rota está correto
+                    routes: [{ name: 'Drawer' }], // Redirecionando para a Home (Drawer)
                 })
             );
         }
@@ -80,18 +52,11 @@ export function ProfileScreen({ navigation }: any) {
                 {
                     text: "Confirmar",
                     onPress: async () => {
-                        const { data: { user: authUser } } = await supabase.auth.getUser();
-                        if (!authUser) return;
-
-                        const { error } = await supabase
-                            .from('profile')
-                            .update({ is_active: false })
-                            .eq('id', authUser.id);
-
-                        if (error) {
-                            Alert.alert("Erro", "Não foi possível desativar sua conta.");
-                        } else {
+                        try {
+                            await ProfileService.updateProfile({ is_active: false } as any);
                             handleLogout();
+                        } catch (error) {
+                            Alert.alert("Erro", "Não foi possível desativar sua conta.");
                         }
                     },
                     style: "destructive"
@@ -119,21 +84,15 @@ export function ProfileScreen({ navigation }: any) {
                                 return;
                             }
 
-                            // 2. Chamada da função com headers explícitos
-                            const { data, error } = await supabase.functions.invoke('delete-user', {
-                                headers: {
-                                    // É CRUCIAL que o 'Authorization' comece com 'Bearer '
-                                    'Authorization': `Bearer ${session.access_token}`
-                                }
-                            });
-
-                            if (error) {
+                            // 2. Chamada da função de exclusão
+                            try {
+                                await ProfileService.deleteUser(session.access_token);
+                                Alert.alert("Sucesso", "Sua conta foi excluída.");
+                                handleLogout();
+                            } catch (error) {
                                 // Se cair aqui, a função retornou erro (provavelmente o 401)
                                 console.error("Erro retornado pela função:", error);
                                 Alert.alert("Erro", "A função de exclusão falhou. Verifique os logs no Supabase.");
-                            } else {
-                                Alert.alert("Sucesso", "Sua conta foi excluída.");
-                                handleLogout();
                             }
                         } catch (err) {
                             console.error("Erro inesperado na chamada:", err);
@@ -177,67 +136,25 @@ export function ProfileScreen({ navigation }: any) {
 
             // 2. Lógica de Imagem
             if (updatedData.newImage && updatedData.newImage.startsWith('file://')) {
-
-                // --- DELETAR FOTO ANTIGA (Se existir) ---
-                // Substitua o bloco de deleção por este:
+                // Deleta foto antiga da storage se existir (simplificado)
+                // Deleta foto antiga da storage se existir
                 if (user?.avatar_url) {
-                    try {
-                        // Pega apenas o nome do arquivo, ignorando query params (?v=123)
-                        const urlWithoutQuery = user.avatar_url.split('?')[0];
-                        const oldFileName = urlWithoutQuery.split('/').pop();
-
-                        if (oldFileName && !oldFileName.includes('placeholder')) {
-                            const { error: deleteError } = await supabase.storage
-                                .from('avatars')
-                                .remove([oldFileName]);
-
-                            if (deleteError) console.log("Erro ao deletar:", deleteError.message);
-                        }
-                    } catch (e) {
-                        console.log("Erro na lógica de limpeza:", e);
-                    }
+                    await ProfileService.removeAvatar(user.avatar_url);
                 }
 
-                // --- UPLOAD DA FOTO NOVA ---
-                const fileExt = updatedData.newImage.split('.').pop();
-                const fileName = `${authUser.id}-${Date.now()}.${fileExt}`;
-
-                const formData = new FormData();
-                formData.append('file', {
-                    uri: updatedData.newImage,
-                    name: fileName,
-                    type: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-                } as any);
-
-                const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(fileName, formData);
-
-                if (uploadError) throw uploadError;
-
-                // Pega a nova URL pública para salvar no banco
-                const { data: { publicUrl } } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(fileName);
-
-                finalImageUrl = publicUrl;
+                // O ProfileService assume upload
+                finalImageUrl = await ProfileService.uploadAvatar(updatedData.newImage);
             }
 
-            // 3. Persistência no Banco (Tabela Profile)
-            const { error: updateError } = await supabase
-                .from('profile')
-                .upsert({
-                    id: authUser.id,
-                    full_name: updatedData.nome,
-                    cpf: documentoLimpo,      // Sua coluna existente
-                    is_cnpj: ehCnpj,          // Nova coluna booleana
-                    phone: telefoneLimpo,     // Coluna de telefone
-                    endereco: updatedData.endereco,
-                    avatar_url: finalImageUrl,
-                    updated_at: new Date(),
-                });
-
-            if (updateError) throw updateError;
+            // 3. Persistência no Banco
+            await ProfileService.updateProfile({
+                full_name: updatedData.nome,
+                cpf: documentoLimpo,
+                phone: telefoneLimpo,
+                endereco: updatedData.endereco,
+                avatar_url: finalImageUrl,
+                is_cnpj: ehCnpj
+            });
 
             setIsModalVisible(false);
             loadProfile();

@@ -1,6 +1,8 @@
-import { View, Text, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl } from "react-native";
 import { styleHome } from "./styles";
 import { supabase } from "@/services/supabase";
+import CategoriasService from "@/services/CategoriasService";
+import AnunciosService from "@/services/AnunciosService";
 import { AdCard } from "@/components/cardAdd/AdCard";
 import React, { useState, useEffect, useCallback } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,9 +10,11 @@ import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
 import { EmptyState } from "@/components/EmptyStateComponent/EmptyState";
+import { AuthModal } from "@/components/AuthModal/AuthModal";
+import { RefreshControlComponent } from "@/components/RefreshControl/RefreshControl";
 
 // Interfaces mantidas conforme seu original
-interface AnuncioProps {
+export interface AnuncioProps {
     id: string;
     titulo: string;
     preco: number;
@@ -22,7 +26,7 @@ interface AnuncioProps {
     impulsionado_ate: string;
 }
 
-interface CategoriaProps {
+export interface CategoriaProps {
     id: string;
     nome: string;
     slug: string;
@@ -37,11 +41,8 @@ export function HomeScreen({ navigation }: any) {
     const route = useRoute();
     const params = route.params as any;
 
-    // --- LÓGICA DE FILTRO ATUALIZADA ---
-    // Como você usa filtrosExtra = (route.params as any)?.filtros, buscamos aqui:
     const filtrosSalvos = params?.filtros;
 
-    // O botão só ativa se houver algum valor dentro do objeto 'filtros'
     const temFiltroAtivo = !!(
         filtrosSalvos?.precoMin ||
         filtrosSalvos?.precoMax ||
@@ -56,11 +57,29 @@ export function HomeScreen({ navigation }: any) {
     const [search, setSearch] = useState("");
     const [categoriaSelecionada, setCategoriaSelecionada] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [listaRegioes, setListaRegioes] = useState<RegiaoProps[]>([]);
     const [pagina, setPagina] = useState(0);
     const [carregandoMais, setCarregandoMais] = useState(false);
     const [temMais, setTemMais] = useState(true);
     const ITENS_POR_PAGINA = 4;
+
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        // Verifica o estado inicial
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsLoggedIn(!!session);
+        });
+
+        // Ouve mudanças na autenticação
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsLoggedIn(!!session);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
 
     // Funções de carregamento mantidas
     async function loadData(categoriaId?: string, filtrosExtra?: any, isMore = false) {
@@ -73,46 +92,17 @@ export function HomeScreen({ navigation }: any) {
 
         try {
             if (!isMore) {
-                const { data: dataRecentes } = await supabase
-                    .from('anuncios')
-                    .select('*')
-                    .eq('status', 'ativo')
-                    .eq('impulsionado', true)
-                    .gt('impulsionado_ate', new Date().toISOString())
-                    .order('created_at', { ascending: false })
-                    .limit(5);
-
+                const dataRecentes = await AnunciosService.getBoostedAds(5);
                 if (dataRecentes) setRecentes(dataRecentes as AnuncioProps[]);
             }
 
-            let query = supabase.from('anuncios').select('*').eq('status', 'ativo');
-
             const catId = categoriaId || categoriaSelecionada;
-            if (catId && catId !== 'tudo') {
-                query = query.eq('categoria_id', catId);
-            }
-
-            if (search.trim() !== "") {
-                query = query.ilike('titulo', `%${search}%`);
-            }
-
-            if (filtrosExtra) {
-                if (filtrosExtra.tipo && filtrosExtra.tipo !== 'todos') query = query.eq('tipo', filtrosExtra.tipo);
-                if (filtrosExtra.estado) query = query.ilike('estado', `%${filtrosExtra.estado}%`);
-                if (filtrosExtra.cidade) query = query.ilike('cidade', `%${filtrosExtra.cidade}%`);
-                if (filtrosExtra.precoMin) query = query.gte('preco', parseFloat(filtrosExtra.precoMin));
-                if (filtrosExtra.precoMax) query = query.lte('preco', parseFloat(filtrosExtra.precoMax));
-            }
-
+            
             const paginaAtual = isMore ? pagina + 1 : 0;
             const offset = paginaAtual * ITENS_POR_PAGINA;
             const limite = offset + ITENS_POR_PAGINA - 1;
 
-            const { data, error } = await query
-                .range(offset, limite)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await AnunciosService.getAds(offset, limite, catId, search, filtrosExtra);
 
             if (data) {
                 if (isMore) {
@@ -141,7 +131,7 @@ export function HomeScreen({ navigation }: any) {
                 if (parsed.length > 0 && !categoriaSelecionada) setCategoriaSelecionada(parsed[0].id);
                 return;
             }
-            const { data } = await supabase.from('categorias').select('*').eq('ativo', true).order('nome', { ascending: true });
+            const data = await CategoriasService.getCategorias();
             if (data) {
                 setListaCategorias(data as CategoriaProps[]);
                 await AsyncStorage.setItem('@categorias_cache', JSON.stringify(data));
@@ -154,7 +144,7 @@ export function HomeScreen({ navigation }: any) {
         try {
             const cached = await AsyncStorage.getItem('@regioes_cache');
             if (cached) setListaRegioes(JSON.parse(cached));
-            const { data } = await supabase.from('localidades_ativas').select('*');
+            const data = await AnunciosService.getRegioes();
             if (data) {
                 setListaRegioes(data as RegiaoProps[]);
                 await AsyncStorage.setItem('@regioes_cache', JSON.stringify(data));
@@ -173,19 +163,64 @@ export function HomeScreen({ navigation }: any) {
         }, [categoriaSelecionada, filtrosSalvos])
     );
 
+    async function handleAdPress(adId: string) {
+        if (isLoggedIn) {
+            navigation.navigate('Detalhes', { adId });
+        } else {
+            setShowAuthModal(true);
+        }
+    }
 
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                loadData(categoriaSelecionada || 'tudo', filtrosSalvos),
+                fetchCategorias(),
+                fetchRegioes()
+            ]);
+        } catch (error) {
+            console.error("Erro ao atualizar home:", error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [categoriaSelecionada, filtrosSalvos]);
 
     return (
-        <ScrollView style={styleHome.container} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+            style={styleHome.container} 
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    colors={['#2D6A4F']}
+                    tintColor="#2D6A4F"
+                    progressViewOffset={50}
+                />
+            }
+        >
             {/* 1. Header */}
             <View style={styleHome.header}>
-                <TouchableOpacity onPress={() => navigation.openDrawer()}>
-                    <Icon name="menu" size={28} color="#000" />
-                </TouchableOpacity>
-                <Text style={styleHome.logo}>EcoMarket</Text>
-                <TouchableOpacity>
-                    <Icon name="notifications-none" size={28} color="#000" />
-                </TouchableOpacity>
+                {isLoggedIn ? (
+                    <>
+                        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+                            <Icon name="menu" size={28} color="#000" />
+                        </TouchableOpacity>
+                        <Text style={styleHome.logo}>EcoMarket</Text>
+                        <TouchableOpacity>
+                            <Icon name="notifications-none" size={28} color="#000" />
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        {/* Botão de menu escondido quando deslogado */}
+                        <View style={{ width: 28 }} />
+                        <Text style={styleHome.logo}>EcoMarket</Text>
+                        <View style={{ width: 28 }} />
+                    </>
+                )}
             </View>
 
             {/* 2. Barra de Busca e Filtro Atualizada */}
@@ -204,17 +239,17 @@ export function HomeScreen({ navigation }: any) {
                 <TouchableOpacity
                     style={[
                         styleHome.filterButton,
-                        temFiltroAtivo && styleHome.filterButtonActive // Muda a cor no seu style.ts
+                        temFiltroAtivo && styleHome.filterButtonActive
                     ]}
                     onPress={() => navigation.navigate('FilterScreen', {
                         regioes: listaRegioes,
-                        filtrosAtuais: filtrosSalvos // Envia os filtros para a tela de filtro "lembrar"
+                        filtrosAtuais: filtrosSalvos
                     })}
                 >
                     <Icon
                         name="tune"
                         size={24}
-                        color={temFiltroAtivo ? "#FFF" : "#2D6A4F"} // Muda a cor do ícone
+                        color={temFiltroAtivo ? "#FFF" : "#2D6A4F"}
                     />
                     {temFiltroAtivo && <View style={styleHome.filterBadge} />}
                 </TouchableOpacity>
@@ -261,7 +296,13 @@ export function HomeScreen({ navigation }: any) {
                     horizontal
                     data={recentes}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <AdCard item={item} isLarge={true} />}
+                    renderItem={({ item }) => (
+                        <AdCard
+                            item={item}
+                            isLarge={true}
+                            onPress={() => handleAdPress(item.id)}
+                        />
+                    )}
                     showsHorizontalScrollIndicator={false}
                     ListEmptyComponent={<EmptyState />}
                 />
@@ -278,7 +319,12 @@ export function HomeScreen({ navigation }: any) {
                     </>
                 ) : recomendados.length > 0 ? (
                     recomendados.map((item) => (
-                        <AdCard key={item.id} item={item} isLarge={false} />
+                        <AdCard
+                            key={item.id}
+                            item={item}
+                            isLarge={false}
+                            onPress={() => handleAdPress(item.id)}
+                        />
                     ))
                 ) : (
                     <EmptyState />
@@ -296,6 +342,19 @@ export function HomeScreen({ navigation }: any) {
             )}
 
             <View style={{ height: 40 }} />
+
+            <AuthModal
+                isVisible={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onLogin={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Login');
+                }}
+                onRegister={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Register');
+                }}
+            />
         </ScrollView>
     );
 }

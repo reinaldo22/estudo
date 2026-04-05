@@ -6,7 +6,7 @@ import { Input } from '@/components/inputComponent/InputConponent';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { useNavigation } from '@react-navigation/native'; // Hook para navegação 🚀
-import { supabase } from "@/services/supabase";
+import ProfileService from '@/services/ProfileService';
 
 export function LoginScreen() {
     const navigation = useNavigation<any>();
@@ -42,29 +42,14 @@ export function LoginScreen() {
 
 
         try {
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            })
+            const authData = await ProfileService.signIn(email, password);
 
-            if (authError) {
-                if (authError.message === 'Invalid login credentials') {
-                    Alert.alert("Erro no Login", "E-mail ou senha incorretos. 🔑");
-                } else {
-                    console.log("------------" + authError);
-
-                    Alert.alert("Erro", authError.message);
-                }
-            } else {
+            if (authData.user) {
                 // Verificação de conta ativa (Desativação)
-                const { data: profile, error: profileError } = await supabase
-                    .from('profile')
-                    .select('is_active')
-                    .eq('id', authData.user.id)
-                    .single();
+                const isActive = await ProfileService.isProfileActive(authData.user.id);
 
-                if (!profileError && profile && profile.is_active === false) {
-                    await supabase.auth.signOut();
+                if (!isActive) {
+                    await ProfileService.signOut();
                     Alert.alert("Conta Desativada", "Sua conta está inativa. Redefina sua senha para reativar.");
                     setLoading(false);
                     return;
@@ -72,8 +57,13 @@ export function LoginScreen() {
 
                 navigation.replace('Drawer');
             }
-        } catch (error) {
-            Alert.alert("Erro", "Ocorreu um erro inesperado.");
+        } catch (authError: any) {
+            if (authError.message === 'Invalid login credentials') {
+                Alert.alert("Erro no Login", "E-mail ou senha incorretos. 🔑");
+            } else {
+                console.log("------------" + authError);
+                Alert.alert("Erro", authError.message);
+            }
         } finally {
             setLoading(false);
         }

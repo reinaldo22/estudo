@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/services/supabase';
+import AnunciosService, { AdDataPayload } from '@/services/AnunciosService';
+import CategoriasService from '@/services/CategoriasService';
 import { styleCreateAd } from './style';
 import { maskCurrency, unmaskCurrency } from '@/utils/formatMask';
 
@@ -39,6 +41,8 @@ export function CreateAdScreen({ navigation, route }: any) {
     const [loading, setLoading] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isImpulsionado, setIsImpulsionado] = useState(false);
+    const [planId, setPlanId] = useState<string | null>(null);
+    const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
     const adToEdit = route.params?.ad;
     const isEditing = !!adToEdit;
@@ -51,6 +55,19 @@ export function CreateAdScreen({ navigation, route }: any) {
             fetchUserProfile();
         }
     }, []);
+
+    useEffect(() => {
+        if (route.params?.isBoosted) {
+            setIsImpulsionado(true);
+        }
+        if (route.params?.paymentConfirmed) {
+            setPaymentConfirmed(true);
+            setIsImpulsionado(true);
+        }
+        if (route.params?.planId) {
+            setPlanId(route.params.planId);
+        }
+    }, [route.params?.isBoosted, route.params?.paymentConfirmed, route.params?.planId]);
 
     function prefillData(ad: any) {
         setTitle(ad.titulo);
@@ -69,11 +86,7 @@ export function CreateAdScreen({ navigation, route }: any) {
         try {
             const { data: { user: authUser } } = await supabase.auth.getUser();
             if (authUser) {
-                const { data, error } = await supabase
-                    .from('profile')
-                    .select('endereco')
-                    .eq('id', authUser.id)
-                    .single();
+                const data = await AnunciosService.getUserProfileLocation(authUser.id);
 
                 if (data?.endereco) {
                     const parts = data.endereco.split('-');
@@ -98,13 +111,8 @@ export function CreateAdScreen({ navigation, route }: any) {
                 setCategories(JSON.parse(cachedCats));
                 return;
             }
-            const { data, error } = await supabase
-                .from('categorias')
-                .select('id, nome')
-                .eq('ativo', true)
-                .order('nome', { ascending: true });
+            const data = await CategoriasService.getCategorias();
 
-            if (error) throw error;
             if (data) {
                 setCategories(data);
                 await AsyncStorage.setItem('@categorias_cache', JSON.stringify(data));
@@ -146,19 +154,9 @@ export function CreateAdScreen({ navigation, route }: any) {
 
             // --- NOVO: Verificação de Limite de Anúncios Gratuitos ---
             if (!isEditing && !isImpulsionado) {
-                const umaSemanaAtras = new Date();
-                umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+                const count = await AnunciosService.checkFreeAdsLimit(user.id);
 
-                const { count, error: countError } = await supabase
-                    .from('anuncios')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
-                    .eq('impulsionado', false)
-                    .gte('created_at', umaSemanaAtras.toISOString());
-
-                if (countError) throw countError;
-
-                if (count !== null && count >= 3) {
+                if (count >= 3) {
                     Alert.alert(
                         'Limite de Anúncios atingido',
                         'Você já atingiu o limite de 3 anúncios gratuitos por semana. Para publicar mais, você pode impulsionar este anúncio.',
@@ -174,41 +172,12 @@ export function CreateAdScreen({ navigation, route }: any) {
             // -----------------------------------------------------------
 
             // 1. Upload only NEW Images
-            const finalUrls: string[] = [];
-            for (const uri of images) {
-                if (uri.startsWith('http')) {
-                    // Already uploaded
-                    finalUrls.push(uri);
-                    continue;
-                }
+            const finalUrls = await AnunciosService.uploadImages(user.id, images);
 
-                const fileExt = uri.split('.').pop();
-                const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-                const formData = new FormData();
-                formData.append('file', {
-                    uri,
-                    name: fileName,
-                    type: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-                } as any);
-
-                const { error: uploadError } = await supabase.storage
-                    .from('anuncios')
-                    .upload(fileName, formData);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('anuncios')
-                    .getPublicUrl(fileName);
-
-                finalUrls.push(publicUrl);
-            }
-
-            const adData: any = {
+            const adData: AdDataPayload = {
                 titulo: title,
                 tipo: type,
-                preco: type === 'venda' ? unmaskCurrency(price) : 0,
+                preco: type === 'venda' ? (unmaskCurrency(price) ?? 0) : 0,
                 categoria_id: category,
                 descricao: description,
                 peso: parseFloat(weight),
@@ -221,39 +190,52 @@ export function CreateAdScreen({ navigation, route }: any) {
             // TODO: No futuro, integrar com gateway de pagamento (Stripe, In-App Purchase, etc.)
             // Antes de salvar no banco, o fluxo de pagamento deve ser completado com sucesso.
             if (isImpulsionado) {
-                const dataExpiracao = new Date();
-                dataExpiracao.setMonth(dataExpiracao.getMonth() + 1);
                 adData.impulsionado = true;
-                adData.impulsionado_ate = dataExpiracao.toISOString();
+                if (planId) {
+                    adData.plan_id = planId;
+                }
             }
 
+            let insertedAdId: string | null = null;
+
             // 2. Save or Update Ad
+            let adObjectForNavigation: any = null;
+
             if (isEditing) {
-                const { error, data } = await supabase
-                    .from('anuncios')
-                    .update(adData)
-                    .eq('id', adToEdit.id)
-                    .eq('user_id', user.id)
-                    .select();
-
-                if (error) {
-                    throw error;
-                }
-
-                if (!data || data.length === 0) {
-                    throw new Error('Anúncio não encontrado ou sem permissão para editar.');
-                }
+                const updateData = await AnunciosService.updateAd(user.id, adToEdit.id, adData);
+                adObjectForNavigation = { ...adData, id: adToEdit.id };
             } else {
-                const { error } = await supabase
-                    .from('anuncios')
-                    .insert({
-                        ...adData,
-                        user_id: user.id,
-                        status: 'ativo',
-                        created_at: new Date(),
-                    });
-                console.log("------------" + error);
-                if (error) throw error;
+                const insertData = await AnunciosService.createAd(user.id, adData);
+
+                if (insertData) {
+                    insertedAdId = insertData.id;
+                    // Mapeamos para o formato que a BoostAd espera (que agora suporta ambos, mas vamos garantir o ID)
+                    adObjectForNavigation = {
+                        ...insertData,
+                        id: insertData.id
+                    };
+                }
+            }
+
+            // Se o usuário marcou para impulsionar, navegamos para a tela de BoostAd com o ID recém criado
+            if (isImpulsionado && !paymentConfirmed) {
+                Alert.alert(
+                    'Quase lá!',
+                    'Seu anúncio foi publicado. Agora complete o pagamento para impulsioná-lo.',
+                    [
+                        {
+                            text: 'Pagar Agora',
+                            onPress: () => navigation.navigate('BoostAd', { adData: adObjectForNavigation })
+                        }
+                    ]
+                );
+                return;
+            }
+
+            // Se o pagamento JÁ foi confirmado (fluxo alternativo se existir), chama a função
+            if (paymentConfirmed && (insertedAdId || adToEdit?.id)) {
+                const idToBoost = isEditing ? adToEdit.id : insertedAdId;
+                await AnunciosService.invokeBoostFunction(idToBoost, planId);
             }
 
             Alert.alert(
@@ -459,10 +441,30 @@ export function CreateAdScreen({ navigation, route }: any) {
                         </View>
                     </View>
                     {/* Opção de Impulsionamento */}
-                    {!isEditing && (
+                    {!isEditing && type === 'venda' && (
                         <TouchableOpacity
                             style={styleCreateAd.boostToggleContainer}
-                            onPress={() => setIsImpulsionado(!isImpulsionado)}
+                            onPress={() => {
+                                if (!isImpulsionado) {
+                                    const missingFields: string[] = [];
+                                    if (images.length === 0) missingFields.push('Fotos');
+                                    if (!title) missingFields.push('Título');
+                                    if (!category) missingFields.push('Categoria');
+                                    if (type === 'venda' && !price) missingFields.push('Preço');
+                                    if (!weight) missingFields.push('Peso');
+                                    if (!cidade) missingFields.push('Cidade');
+                                    if (!estado) missingFields.push('Estado');
+
+                                    if (missingFields.length > 0) {
+                                        Alert.alert(
+                                            'Anúncio Incompleto',
+                                            `Para impulsionar, preencha primeiro: ${missingFields.join(', ')}.`
+                                        );
+                                        return;
+                                    }
+                                }
+                                setIsImpulsionado(!isImpulsionado);
+                            }}
                             activeOpacity={0.7}
                         >
                             <View style={[styleCreateAd.boostCheckbox, isImpulsionado && styleCreateAd.boostCheckboxActive]}>
@@ -470,8 +472,13 @@ export function CreateAdScreen({ navigation, route }: any) {
                             </View>
                             <View style={styleCreateAd.boostTextContainer}>
                                 <Text style={styleCreateAd.boostTitle}>Impulsionar anúncio (Destaque)</Text>
-                                <Text style={styleCreateAd.boostSubtitle}>Apareça na seção de anúncios impulsionados por 1 mês.</Text>
+                                <Text style={styleCreateAd.boostSubtitle}>
+                                    {isImpulsionado
+                                        ? 'Anúncio será impulsionado após a publicação!'
+                                        : 'Apareça na seção de anúncios impulsionados por até 15 dias.'}
+                                </Text>
                             </View>
+                            <Ionicons name="chevron-forward" size={20} color="#666" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                     )}
 

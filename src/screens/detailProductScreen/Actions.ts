@@ -1,6 +1,6 @@
 // services/adActions.ts
 import { Share, Linking, Alert } from 'react-native';
-import { supabase } from '@/services/supabase';
+import FavoritosService from '@/services/FavoritosService';
 
 export const adActions = {
     // Função de Compartilhar
@@ -36,15 +36,13 @@ export const adActions = {
         }
 
         const estadoAnterior = isFavorito;
+        // Optimistic Update
         setIsFavorito(!estadoAnterior);
 
         try {
-            if (!estadoAnterior) {
-                await supabase.from('favoritos').insert({ ad_id: adId, user_id: userId });
-            } else {
-                await supabase.from('favoritos').delete().eq('ad_id', adId).eq('user_id', userId);
-            }
+            await FavoritosService.toggleFavorite(adId, estadoAnterior);
         } catch (error) {
+            // Revert changes if API fails
             setIsFavorito(estadoAnterior);
             console.error(error);
         }

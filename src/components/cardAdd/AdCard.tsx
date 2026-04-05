@@ -16,9 +16,10 @@ interface AdCardProps {
         impulsionado?: boolean;
     };
     isLarge?: boolean;
+    onPress?: () => void;
 }
 
-export const AdCard = ({ item, isLarge }: AdCardProps) => {
+export const AdCard = ({ item, isLarge, onPress }: AdCardProps) => {
     const navigation = useNavigation<any>(); // Inicializando o hook de navegação
 
     // Pegamos apenas a primeira imagem do array
@@ -30,7 +31,7 @@ export const AdCard = ({ item, isLarge }: AdCardProps) => {
     return (
         <TouchableOpacity
             activeOpacity={0.8} // Efeito visual de clique
-            onPress={() => navigation.navigate('Detalhes', { adId: item.id })}
+            onPress={onPress ? onPress : () => navigation.navigate('Detalhes', { adId: item.id })}
             style={isLarge ? CardStyle.cardLarge : CardStyle.cardSmall}
         >
             <View style={CardStyle.imageContainer}>

@@ -90,7 +90,7 @@ export const styleHome = StyleSheet.create({
         color: '#333',
     },
     filterButton: {
-        marginLeft: 12, 
+        marginLeft: 12,
         backgroundColor: '#FFFFFF',
         padding: 10,
         borderRadius: 12,
@@ -185,5 +185,13 @@ export const styleHome = StyleSheet.create({
         backgroundColor: '#FFD700',
         borderWidth: 1,
         borderColor: '#FFF',
+    },
+    loginHeaderButton: {
+        backgroundColor: '#E8F5E9',
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: '#D4EBE0',
     },
 });

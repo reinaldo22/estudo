@@ -1,6 +1,9 @@
+const isProduction = process.env.APP_VARIANT === 'production';
+const isHomolog = process.env.APP_VARIANT === 'homolog';
+
 export default {
   expo: {
-    name: "Reciclã",
+    name: isProduction ? "Reciclã" : `Reciclã (${process.env.APP_VARIANT || 'Dev'})`,
     slug: "recicla",
     scheme: "recicla",
     version: "1.0.0",
@@ -12,6 +15,7 @@ export default {
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      variant: process.env.APP_VARIANT || 'development'
     },
 
     splash: {

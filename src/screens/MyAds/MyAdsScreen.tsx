@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { supabase } from '@/services/supabase';
+import { supabase } from '@/services/supabase'; // auth.getUser only
+import AnunciosService from '@/services/AnunciosService';
 import { AdCard } from '@/components/cardAdd/AdCard';
 import { EmptyState } from '@/components/EmptyStateComponent/EmptyState';
 import { AdCardSkeleton } from '@/components/Skeleton/Skeleton';
 import { styleMyAds } from './style';
+import { RefreshControlComponent } from '@/components/RefreshControl/RefreshControl';
 
 interface AdProps {
     id: string;
@@ -25,6 +27,7 @@ interface AdProps {
 export function MyAdsScreen({ navigation }: any) {
     const [ads, setAds] = useState<AdProps[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'ativos' | 'finalizados'>('ativos');
 
     useFocusEffect(
@@ -39,26 +42,7 @@ export function MyAdsScreen({ navigation }: any) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Mapeamos a aba para o status no banco
-            let query = supabase
-                .from('anuncios')
-                .select('*')
-                .eq('user_id', user.id);
-
-            if (activeTab === 'ativos') {
-                query = query.eq('status', 'ativo');
-            } else {
-                query = query.in('status', ['vendido', 'inativo']);
-            }
-
-            // Ordenação por Impulsionados primeiro, depois por mais recentes
-            query = query
-                .order('impulsionado', { ascending: false })
-                .order('created_at', { ascending: false });
-
-            const { data, error } = await query;
-
-            if (error) throw error;
+            const data = await AnunciosService.getMyAds(user.id, activeTab);
             if (data) setAds(data as AdProps[]);
         } catch (error) {
             console.error("Erro ao carregar meus anúncios:", error);
@@ -67,15 +51,21 @@ export function MyAdsScreen({ navigation }: any) {
         }
     }
 
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await loadMyAds();
+        } catch (error) {
+            console.error("Erro ao atualizar meus anúncios:", error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [activeTab]);
+
     async function toggleStatus(id: string, currentStatus: string) {
         try {
             const newStatus = currentStatus === 'ativo' ? 'inativo' : 'ativo';
-            const { error } = await supabase
-                .from('anuncios')
-                .update({ status: newStatus })
-                .eq('id', id);
-
-            if (error) throw error;
+            await AnunciosService.toggleAdStatus(id, newStatus);
 
             // Remove localmente da aba atual para evitar refresh visual total
             setAds(prev => prev.filter(ad => ad.id !== id));
@@ -109,12 +99,7 @@ export function MyAdsScreen({ navigation }: any) {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            const { error } = await supabase
-                                .from('anuncios')
-                                .delete()
-                                .eq('id', item.id);
-
-                            if (error) throw error;
+                            await AnunciosService.deleteAd(item.id);
 
                             // Remove localmente para evitar refresh visual total
                             setAds(prev => prev.filter(ad => ad.id !== item.id));
@@ -173,6 +158,14 @@ export function MyAdsScreen({ navigation }: any) {
                                     </Text>
                                 </View>
                             )}
+
+                            {item.status === 'desativado' && (
+                                <View style={[styleMyAds.tagContainer, { backgroundColor: '#FFF4E5' }]}>
+                                    <Text style={[styleMyAds.tagText, { color: '#B7791F' }]}>
+                                        Aguardando Pagamento
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                         {item.tipo === 'venda' ? (
                             <Text style={styleMyAds.priceText}>
@@ -189,25 +182,56 @@ export function MyAdsScreen({ navigation }: any) {
                         style={styleMyAds.actionButton}
                         onPress={() => navigation.navigate('CreateAd', { ad: item })}
                     >
-                        <Icon name="edit" size={18} color="#4A4A4A" />
+                        <Icon name="edit" size={16} color="#4A4A4A" style={styleMyAds.actionButtonIcon} />
                         <Text style={styleMyAds.actionButtonText}>Editar</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styleMyAds.actionButton}
-                        onPress={() => toggleStatus(item.id, item.status)}
-                    >
-                        <Icon
-                            name={item.status === 'ativo' ? "pause-circle-filled" : "play-circle-filled"}
-                            size={18}
-                            color={item.status === 'ativo' ? "#4A4A4A" : "#2D6A4F"}
-                        />
-                        <Text style={[
-                            styleMyAds.actionButtonText,
-                            item.status !== 'ativo' && { color: '#2D6A4F' }
-                        ]}>
-                            {item.status === 'ativo' ? 'Pausar' : 'Reativar'}
-                        </Text>
-                    </TouchableOpacity>
+
+                    {!isBoostedActive && item.tipo === 'venda' && (
+                        <TouchableOpacity
+                            style={[
+                                styleMyAds.actionButton, 
+                                { 
+                                    backgroundColor: item.status === 'desativado' ? '#F5F5F5' : '#FDF2E9', 
+                                    borderColor: item.status === 'desativado' ? '#E0E0E0' : '#E65100' 
+                                }
+                            ]}
+                            disabled={item.status === 'desativado'}
+                            onPress={() => navigation.navigate('BoostAd', { adData: item })}
+                        >
+                            <Icon 
+                                name="bolt" 
+                                size={16} 
+                                color={item.status === 'desativado' ? '#A0A0A0' : '#E65100'} 
+                                style={styleMyAds.actionButtonIconBoost} 
+                            />
+                            <Text style={[
+                                styleMyAds.actionButtonText, 
+                                { color: item.status === 'desativado' ? '#A0A0A0' : '#E65100' }
+                            ]}>
+                                Impulsionar
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {item.status !== 'desativado' && (
+                        <TouchableOpacity
+                            style={styleMyAds.actionButton}
+                            onPress={() => toggleStatus(item.id, item.status)}
+                        >
+                            <Icon
+                                name={item.status === 'ativo' ? "pause-circle-filled" : "play-circle-filled"}
+                                size={18}
+                                color={item.status === 'ativo' ? "#4A4A4A" : "#2D6A4F"}
+                                style={styleMyAds.actionButtonIcon}
+                            />
+                            <Text style={[
+                                styleMyAds.actionButtonText,
+                                item.status !== 'ativo' && { color: '#2D6A4F' }
+                            ]}>
+                                {item.status === 'ativo' ? 'Pausar' : 'Reativar'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         );
@@ -257,9 +281,17 @@ export function MyAdsScreen({ navigation }: any) {
                     data={ads}
                     keyExtractor={(item) => item.id}
                     renderItem={renderAdItem}
-                    contentContainerStyle={styleMyAds.listContent}
+                    contentContainerStyle={[styleMyAds.listContent, { flexGrow: 1 }]}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={<EmptyState />}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#2D6A4F']}
+                            tintColor="#2D6A4F"
+                        />
+                    }
                 />
             )}
         </SafeAreaView>

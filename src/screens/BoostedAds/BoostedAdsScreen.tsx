@@ -3,8 +3,10 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
+import AnunciosService from '@/services/AnunciosService';
 import { AdCard } from '@/components/cardAdd/AdCard';
 import { styleBoosted } from './styles';
+import { AuthModal } from '@/components/AuthModal/AuthModal';
 
 interface AnuncioProps {
     id: string;
@@ -19,6 +21,7 @@ interface AnuncioProps {
 export function BoostedAdsScreen({ navigation }: any) {
     const [ads, setAds] = useState<AnuncioProps[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     useEffect(() => {
         fetchBoostedAds();
@@ -27,20 +30,23 @@ export function BoostedAdsScreen({ navigation }: any) {
     async function fetchBoostedAds() {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('anuncios')
-                .select('*')
-                .eq('status', 'ativo')
-                .eq('impulsionado', true)
-                .gt('impulsionado_ate', new Date().toISOString())
-                .order('created_at', { ascending: false });
+            const data = await AnunciosService.getBoostedAds();
 
-            if (error) throw error;
             if (data) setAds(data as AnuncioProps[]);
         } catch (error) {
             console.error("Erro ao carregar anúncios impulsionados:", error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleAdPress(adId: string) {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+            navigation.navigate('Detalhes', { adId });
+        } else {
+            setShowAuthModal(true);
         }
     }
 
@@ -64,7 +70,10 @@ export function BoostedAdsScreen({ navigation }: any) {
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <View style={styleBoosted.cardWrapper}>
-                            <AdCard item={item} />
+                            <AdCard
+                                item={item}
+                                onPress={() => handleAdPress(item.id)}
+                            />
                         </View>
                     )}
                     contentContainerStyle={styleBoosted.listContent}
@@ -77,6 +86,19 @@ export function BoostedAdsScreen({ navigation }: any) {
                     }
                 />
             )}
+
+            <AuthModal
+                isVisible={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onLogin={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Login');
+                }}
+                onRegister={() => {
+                    setShowAuthModal(false);
+                    navigation.navigate('Register');
+                }}
+            />
         </SafeAreaView>
     );
 }

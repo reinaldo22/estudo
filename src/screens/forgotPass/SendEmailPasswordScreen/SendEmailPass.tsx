@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { Input } from '@/components/inputComponent/InputConponent';
-import { supabase } from "@/services/supabase";
+import ProfileService from '@/services/ProfileService';
 
 export function SendEmailPass() {
     const navigation = useNavigation<any>();
@@ -33,33 +33,14 @@ export function SendEmailPass() {
         setLoading(true);
 
         try {
-            
-            const { data, error } = await supabase
-                .from('profile')
-                .select('email')
-                .eq('email', email.trim().toLowerCase())
-                .single();
+            const emailExists = await ProfileService.checkEmailExists(email);
 
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    setErrors({ email: 'E-mail não encontrado em nossa base.' });
-                } else {
-                    console.error('Erro técnico na consulta:', error.message);
-                    setErrors({ email: 'Erro ao validar e-mail. Tente novamente.' });
-                }
+            if (!emailExists) {
+                setErrors({ email: 'E-mail não encontrado em nossa base.' });
                 return;
             }
 
-
-            const { data: funcData, error: funcError } = await supabase.functions.invoke('send-reset-code', {
-                body: { to: email.trim().toLowerCase() },
-            });
-
-            if (funcError) {
-                console.error("Erro ao invocar function:", funcError);
-                Alert.alert("Erro", "Falha ao enviar código de verificação. Tente novamente.");
-                return;
-            }
+            await ProfileService.sendResetCode(email);
 
             navigation.navigate('ConfirmCode', { email: email.trim().toLowerCase() });
 

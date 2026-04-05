@@ -4,6 +4,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 
 // Suas importações
+import { supabase } from '@/services/supabase';
 import { FilterScreen } from '@/screens/FilterScreen/FilterScreen';
 import { HomeScreen } from "@/screens/home/HomeScreen";
 import { RegisterScreen } from '@/screens/register/RegisterScreen';
@@ -17,26 +18,42 @@ import { ProfileScreen } from '@/screens/ProfileScreen/ProfileScreen';
 import { MyAdsScreen } from '@/screens/MyAds/MyAdsScreen';
 import { CreateAdScreen } from '@/screens/CreateAd/CreateAdScreen';
 import { BoostedAdsScreen } from '@/screens/BoostedAds/BoostedAdsScreen';
+import { BoostAdScreen } from '@/screens/BoostAd/BoostAdScreen';
+import { PixPaymentScreen } from '@/screens/PixPayment/PixPaymentScreen';
 
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 
 // 1. Definição das Rotas do Menu Lateral (Drawer)
 function DrawerRoutes() {
+    const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+
+    React.useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setIsLoggedIn(!!session);
+        };
+        checkAuth();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsLoggedIn(!!session);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
     return (
         <Drawer.Navigator
             drawerContent={(props) => <DrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
-                // --- AJUSTES CONTRA O BUG DE ABRIR SOZINHO ---
-                drawerType: 'front',           // Sobrepõe a tela (evita empurrar o layout)
-                swipeEnabled: true,            // Permite o gesto, mas não força a abertura
-                // --------------------------------------------
+                drawerType: 'front',
+                swipeEnabled: isLoggedIn, // SÓ PERMITE SWIPE SE ESTIVER LOGADO
                 drawerActiveBackgroundColor: 'transparent',
                 drawerActiveTintColor: '#2D6A4F',
                 drawerInactiveTintColor: '#4A4A4A',
                 drawerLabelStyle: {
-                    marginLeft: 5,             // Espaçamento entre ícone e texto
+                    marginLeft: 5,
                     fontSize: 16,
                     fontWeight: '500'
                 },
@@ -161,6 +178,25 @@ export function Routes() {
                 name="BoostedAds"
                 component={BoostedAdsScreen}
                 options={{ headerShown: false }}
+            />
+
+            <Stack.Screen
+                name="BoostAd"
+                component={BoostAdScreen}
+                options={{
+                    headerShown: false,
+                    animation: 'slide_from_bottom',
+                    presentation: 'modal'
+                }}
+            />
+
+            <Stack.Screen
+                name="PixPayment"
+                component={PixPaymentScreen}
+                options={{
+                    headerShown: false,
+                    presentation: 'card'
+                }}
             />
 
         </Stack.Navigator>

@@ -15,7 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { supabase } from '@/services/supabase';
+import { supabase } from '@/services/supabase'; // keeping for auth.getUser() only
+import AnunciosService from '@/services/AnunciosService';
+import FavoritosService from '@/services/FavoritosService';
 import { adActions } from './Actions'; // Suas novas funções
 import { styleDetail } from './style';
 
@@ -39,31 +41,13 @@ export function AdDetail() {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) setUserId(user.id);
 
-                const { data: adData } = await supabase
-                    .from('anuncios')
-                    .select(`
-                        *,
-                        profile (
-                            full_name,
-                            avatar_url,
-                            rating,
-                            phone
-                        )
-                    `)
-                    .eq('id', adId)
-                    .single();
+                const adData = await AnunciosService.getAdDetails(adId);
 
                 if (adData) setAd(adData);
 
                 if (user) {
-                    const { data: favData } = await supabase
-                        .from('favoritos')
-                        .select('id')
-                        .eq('ad_id', adId)
-                        .eq('user_id', user.id)
-                        .maybeSingle();
-
-                    if (favData) setIsFavorito(true);
+                    const isFav = await FavoritosService.checkIfFavorited(adId);
+                    setIsFavorito(isFav);
                 }
             } catch (error) {
                 console.error("Erro ao carregar dados:", error);

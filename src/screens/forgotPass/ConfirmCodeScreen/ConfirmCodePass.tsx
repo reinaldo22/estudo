@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from '@/components/buttonRegister/Button';
 import { Input } from '@/components/inputComponent/InputConponent';
-import { supabase } from "@/services/supabase";
+import ProfileService from '@/services/ProfileService';
 
 export function ConfirmCodePass() {
     const navigation = useNavigation<any>();
@@ -35,15 +35,10 @@ export function ConfirmCodePass() {
         setErrorCode('');
 
         try {
-            // Buscando os dados na tabela 'profile' conforme sua estrutura
-            const { data, error } = await supabase
-                .from('profile')
-                .select('reset_code, reset_code_expires_at')
-                .eq('email', email)
-                .single();
+            // Buscando os dados via Service
+            const data = await ProfileService.getResetCodeByEmail(email);
 
-            console.log("---->>>>>-", data)
-            if (error || !data) {
+            if (!data) {
                 Alert.alert("Erro", "Não encontramos um código para este e-mail.");
                 return;
             }
